@@ -72,13 +72,20 @@ const HRESULT CDDSpecials::InitializeHook(void)
 		CComPtr<IEnumPins> pPinEnum;
 		m_pTunerDevice->EnumPins(&pPinEnum);
 		if (pPinEnum) {
-			CComPtr<IPin> pPin;
-			while (!(m_pPropsetTunerOutputPin) && SUCCEEDED(pPinEnum->Next(1, &pPin, NULL))) {
-				PIN_DIRECTION dir;
-				if (SUCCEEDED(pPin->QueryDirection(&dir)) && dir == PIN_DIRECTION::PINDIR_OUTPUT) {
-					// output pin ‚Ì IKsPropertySet ‚ðŽæ“¾
-					CComQIPtr<IKsPropertySet> pPropsetTunerPin(pPin);
-					if (!pPropsetTunerPin) {
+			while (!m_pPropsetTunerOutputPin) {
+				CComPtr<IPin> pPin;
+				if (SUCCEEDED(pPinEnum->Next(1, &pPin, NULL))) {
+					if (!pPin) {
+						OutputDebug(L"Can not find tuner output pin.\n");
+						break;
+					}
+					PIN_DIRECTION dir;
+					if (SUCCEEDED(pPin->QueryDirection(&dir)) && dir == PIN_DIRECTION::PINDIR_OUTPUT) {
+						// output pin ‚Ì IKsPropertySet ‚ðŽæ“¾
+						CComQIPtr<IKsPropertySet> pPropsetTunerPin(pPin);
+						if (!pPropsetTunerPin) {
+							OutputDebug(L"Tuner output pin does not have IKsPropertySet.\n");
+						}
 						m_pPropsetTunerOutputPin = pPropsetTunerPin;
 						break;
 					}
