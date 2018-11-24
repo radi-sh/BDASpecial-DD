@@ -58,6 +58,7 @@ private:
 	HMODULE m_hMySelf;
 	CComPtr<IKsPropertySet> m_pPropsetTunerOutputPin;
 	CComPtr<IBaseFilter> m_pTunerDevice;
+	CComPtr<IBDA_DeviceControl> m_pDeviceControl;
 
 	// チューニングスペース毎のデータ
 	struct TuningSpaceData {

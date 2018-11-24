@@ -8,11 +8,6 @@
 #include <dshow.h>
 #include "CIniFileAccess.h"
 
-#include <dmksctrl.h>
-
-#define INSTANCEDATA_OF_PROPERTY_PTR(x) ((PKSPROPERTY((x))) + 1)
-#define INSTANCEDATA_OF_PROPERTY_SIZE(x) (sizeof((x)) - sizeof(KSPROPERTY))
-
 FILE *g_fpLog = NULL;
 
 HMODULE hMySelf;
@@ -72,6 +67,13 @@ const HRESULT CDDSpecials::InitializeHook(void)
 	}
 
 	HRESULT hr;
+	CComQIPtr<IBDA_DeviceControl> pDeviceControl(m_pTunerDevice);
+	if (!pDeviceControl) {
+		OutputDebug(L"Can not get IBDA_DeviceControl.\n");
+		return E_NOINTERFACE;
+	}
+	m_pDeviceControl = pDeviceControl;
+
 	if (m_pPropsetTunerOutputPin == NULL) {
 		// チューナーデバイスの output pinを見つける
 		CComPtr<IEnumPins> pPinEnum;
@@ -289,42 +291,34 @@ const HRESULT CDDSpecials::PreTuneRequest(const TuningParam *pTuningParm, ITuneR
 	}
 #else
 	/* TEST用コード */
-	struct KSPROPERTY_DD_BDA_SELECT_STANDARD_S {
-		KSPROPERTY Property;
-		ULONG SignalStandard;
-	};
 	BYTE buf[65536] = { 0, };
 	ULONG * pVal = (ULONG *)(&buf[0]);
 	DWORD dwReturnd = 0;
-	OutputDebug(L"SelectStandard: Trying to determine required buffer size by specifying NULL for pPropData.\n");
-	if (FAILED(hr = m_pPropsetTunerOutputPin->Get(KSPROPERTYSET_DD_BDA_DIGITAL_DEMODULATOR, KSPROPERTY_DD_BDA_SELECT_STANDARD, NULL, 0, NULL, 0, &dwReturnd))) {
+	if (FAILED(hr = m_pPropsetTunerOutputPin->Get(KSPROPERTYSET_DD_BDA_DIGITAL_DEMODULATOR, KSPROPERTY_DD_BDA_SELECT_STANDARD, buf, sizeof(buf), buf, sizeof(buf), &dwReturnd))) {
 		OutputDebug(L"SelectStandard: Fail to IKsPropertySet::Get() function. ret=0x%08lx\n", hr);
-		OutputDebug(L"SelectStandard: Trying to determine required buffer size by specifying large buffer for pPropData.\n");
-		if (FAILED(hr = m_pPropsetTunerOutputPin->Get(KSPROPERTYSET_DD_BDA_DIGITAL_DEMODULATOR, KSPROPERTY_DD_BDA_SELECT_STANDARD, buf, sizeof(buf), buf, sizeof(buf), &dwReturnd))) {
-			OutputDebug(L"SelectStandard: Fail to IKsPropertySet::Get() function. ret=0x%08lx\n", hr);
-			// KSPROPERTY_DD_BDA_SELECT_STANDARD_S 構造体を使用してみる
-			KSPROPERTY_DD_BDA_SELECT_STANDARD_S SelectStandard;
-			memset(&SelectStandard, 0, sizeof(SelectStandard));
-			OutputDebug(L"SelectStandard: Trying to IKsPropertySet::Get() function with KSPROPERTY_DD_BDA_SELECT_STANDARD_S structure.\n");
-			if (FAILED(hr = m_pPropsetTunerOutputPin->Get(KSPROPERTYSET_DD_BDA_DIGITAL_DEMODULATOR, KSPROPERTY_DD_BDA_SELECT_STANDARD, INSTANCEDATA_OF_PROPERTY_PTR(&SelectStandard), INSTANCEDATA_OF_PROPERTY_SIZE(SelectStandard), &SelectStandard, sizeof(SelectStandard), &dwReturnd))) {
-				OutputDebug(L"SelectStandard: Fail to IKsPropertySet::Get() function. ret=0x%08lx\n", hr);
-			}
-			else {
-				OutputDebug(L"SelectStandard: Succeeded to IKsPropertySet::Get() function. bytes=%ld, val=%ld\n", dwReturnd, SelectStandard.SignalStandard);
-			}
-			SelectStandard.SignalStandard = m_TuningData.GetSignalStandard(pTuningParm->IniSpaceID);
-			OutputDebug(L"SelectStandard: trying to IKsPropertySet::Set() function with KSPROPERTY_DD_BDA_SELECT_STANDARD_S structure. val=%ld.\n", SelectStandard.SignalStandard);
-			if (FAILED(hr = m_pPropsetTunerOutputPin->Set(KSPROPERTYSET_DD_BDA_DIGITAL_DEMODULATOR, KSPROPERTY_DD_BDA_SELECT_STANDARD, INSTANCEDATA_OF_PROPERTY_PTR(&SelectStandard), INSTANCEDATA_OF_PROPERTY_SIZE(SelectStandard), &SelectStandard, sizeof(SelectStandard)))) {
-				OutputDebug(L"SelectStandard: Fail to IKsPropertySet::Set() function. ret=0x%08lx\n", hr);
-				return E_FAIL;
-			}
-		}
+		return E_FAIL;
 	}
 	OutputDebug(L"SelectStandard: Succeeded to IKsPropertySet::Get() function. bytes=%ld, val=%ld\n", dwReturnd, *pVal);
 	*pVal = m_TuningData.GetSignalStandard(pTuningParm->IniSpaceID);
+	if (FAILED(hr = m_pDeviceControl->StartChanges())) {
+		OutputDebug(L"SelectStandard: Fail to IBDA_DeviceControl::StartChanges() function. ret=0x%08lx\n", hr);
+		return E_FAIL;
+	}
 	OutputDebug(L"SelectStandard: trying to set. val=%ld.\n", *pVal);
 	if (FAILED(hr = m_pPropsetTunerOutputPin->Set(KSPROPERTYSET_DD_BDA_DIGITAL_DEMODULATOR, KSPROPERTY_DD_BDA_SELECT_STANDARD, buf, dwReturnd, buf, dwReturnd))) {
-		OutputDebug(L"SelectStandard: Fail to IKsPropertySet::Set() function. ret=0x%08lx\n", hr);
+		OutputDebug(L"SelectStandard: Driver's bug? Fail to IKsPropertySet::Set() function. ret=0x%08lx\n", hr);
+		// Driverのバグ暫定処置
+		OutputDebug(L"SelectStandard: trying to set with large buffer. val=%ld.\n", *pVal);
+		if (FAILED(hr = m_pPropsetTunerOutputPin->Set(KSPROPERTYSET_DD_BDA_DIGITAL_DEMODULATOR, KSPROPERTY_DD_BDA_SELECT_STANDARD, buf, sizeof(buf), buf, sizeof(buf)))) {
+			OutputDebug(L"SelectStandard: Fail to IKsPropertySet::Set() function. ret=0x%08lx\n", hr);
+			return E_FAIL;
+		}
+	}
+	if (FAILED(hr = m_pDeviceControl->CommitChanges())) {
+		OutputDebug(L"SelectStandard: Fail to IBDA_DeviceControl::CommitChanges() function. ret=0x%08lx\n", hr);
+		// 全ての変更を取り消す
+		hr = m_pDeviceControl->StartChanges();
+		hr = m_pDeviceControl->CommitChanges();
 		return E_FAIL;
 	}
 	/* TEST用コード終わり */
@@ -355,11 +349,46 @@ const HRESULT CDDSpecials::PostLockChannel(const TuningParam *pTuningParm)
 	case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_ISDBC:
 	case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_ISDBS:
 	case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_DVBS2:
+#if 0
 		OutputDebug(L"SelectStream: trying to set. val=%ld.\n", val);
 		if (FAILED(hr = m_pPropsetTunerOutputPin->Set(KSPROPERTYSET_DD_BDA_DIGITAL_DEMODULATOR, KSPROPERTY_DD_BDA_SELECT_STREAM, NULL, 0, &val, sizeof(val)))) {
 			OutputDebug(L"SelectStream: Fail to IKsPropertySet::Set() function. ret=0x%08lx\n", hr);
 			return E_FAIL;
 		}
+#else
+		/* TEST用コード */
+		BYTE buf[65536] = { 0, };
+		ULONG * pVal = (ULONG *)(&buf[0]);
+		DWORD dwReturnd = 0;
+		if (FAILED(hr = m_pPropsetTunerOutputPin->Get(KSPROPERTYSET_DD_BDA_DIGITAL_DEMODULATOR, KSPROPERTY_DD_BDA_SELECT_STREAM, buf, sizeof(buf), buf, sizeof(buf), &dwReturnd))) {
+			OutputDebug(L"SelectStream: Fail to IKsPropertySet::Get() function. ret=0x%08lx\n", hr);
+			return E_FAIL;
+		}
+		OutputDebug(L"SelectStream: Succeeded to IKsPropertySet::Get() function. bytes=%ld, val=%ld\n", dwReturnd, *pVal);
+		*pVal = val;
+		if (FAILED(hr = m_pDeviceControl->StartChanges())) {
+			OutputDebug(L"SelectStream: Fail to IBDA_DeviceControl::StartChanges() function. ret=0x%08lx\n", hr);
+			return E_FAIL;
+		}
+		OutputDebug(L"SelectStream: trying to set. val=%ld.\n", *pVal);
+		if (FAILED(hr = m_pPropsetTunerOutputPin->Set(KSPROPERTYSET_DD_BDA_DIGITAL_DEMODULATOR, KSPROPERTY_DD_BDA_SELECT_STREAM, buf, dwReturnd, buf, dwReturnd))) {
+			OutputDebug(L"SelectStream: Driver's bug? Fail to IKsPropertySet::Set() function. ret=0x%08lx\n", hr);
+			// Driverのバグ暫定処置
+			OutputDebug(L"SelectStream: trying to set with large buffer. val=%ld.\n", *pVal);
+			if (FAILED(hr = m_pPropsetTunerOutputPin->Set(KSPROPERTYSET_DD_BDA_DIGITAL_DEMODULATOR, KSPROPERTY_DD_BDA_SELECT_STREAM, buf, sizeof(buf), buf, sizeof(buf)))) {
+				OutputDebug(L"SelectStream: Fail to IKsPropertySet::Set() function. ret=0x%08lx\n", hr);
+				return E_FAIL;
+			}
+		}
+		if (FAILED(hr = m_pDeviceControl->CommitChanges())) {
+			OutputDebug(L"SelectStream: Fail to IBDA_DeviceControl::CommitChanges() function. ret=0x%08lx\n", hr);
+			// 全ての変更を取り消す
+			hr = m_pDeviceControl->StartChanges();
+			hr = m_pDeviceControl->CommitChanges();
+			return E_FAIL;
+		}
+		/* TEST用コード終わり */
+#endif
 		break;
 	}
 	return S_OK;
