@@ -3,6 +3,9 @@
 #include "IBdaSpecials2.h"
 #include <map>
 
+#include <Ks.h>
+#include <ksproxy.h>
+
 static const GUID KSPROPERTYSET_DD_BDA_DIGITAL_DEMODULATOR = { 0x0aa8a605, 0xa240, 0x11de, {0xb1, 0x30, 0x00, 0x00, 0x00, 0x00, 0x4d, 0x56} };
 
 class CDDSpecials : public IBdaSpecials2a3
@@ -55,8 +58,28 @@ private:
 		DD_SIGNAL_STANDARD_J83B = 16,
 	};
 
+#define NODE_ID_DD_BDA_DIGITAL_DEMODULATOR 1
+
+	struct KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S {
+		KSP_NODE ExtensionProp;
+		KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S(ULONG Id)
+		{
+			ExtensionProp.Property = { KSPROPERTYSET_DD_BDA_DIGITAL_DEMODULATOR, Id, 0 };
+			ExtensionProp.NodeId = NODE_ID_DD_BDA_DIGITAL_DEMODULATOR;
+			ExtensionProp.Reserved = 0;
+		}
+		KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S(ULONG Id, ULONG flags)
+			: KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S(Id)
+		{
+			SetFlags(flags);
+		}
+		void SetFlags(ULONG flags) {
+			ExtensionProp.Property.Flags = flags;
+		}
+	};
+
 	HMODULE m_hMySelf;
-	CComPtr<IKsPropertySet> m_pPropsetTunerOutputPin;
+	CComPtr<IKsControl> m_pControlTunerOutputPin;
 	CComPtr<IBaseFilter> m_pTunerDevice;
 	CComPtr<IBDA_DeviceControl> m_pDeviceControl;
 
@@ -113,5 +136,8 @@ private:
 	BOOL m_bEnableSelectStandard;
 	BOOL m_bEnableSelectStream;
 	BOOL m_bSelectStreamRelative;
+	/* Test用コード */
+	BOOL m_bNeedCommitChanges;
+	/* Test用コード終わり */
 	BOOL m_bDisableTSMF;
 };
