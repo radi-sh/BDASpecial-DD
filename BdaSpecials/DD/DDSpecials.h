@@ -6,8 +6,6 @@
 #include <Ks.h>
 #include <ksproxy.h>
 
-static const GUID KSPROPERTYSET_DD_BDA_DIGITAL_DEMODULATOR = { 0x0aa8a605, 0xa240, 0x11de, {0xb1, 0x30, 0x00, 0x00, 0x00, 0x00, 0x4d, 0x56} };
-
 class CDDSpecials : public IBdaSpecials2a3
 {
 public:
@@ -34,6 +32,8 @@ public:
 	virtual void Release(void);
 
 private:
+	static constexpr GUID KSPROPERTYSET_DD_BDA_DIGITAL_DEMODULATOR = { 0x0aa8a605, 0xa240, 0x11de, {0xb1, 0x30, 0x00, 0x00, 0x00, 0x00, 0x4d, 0x56} };
+
 	enum KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR {
 		KSPROPERTY_DD_BDA_SELECT_STANDARD = 0,	// Select signal standard
 		KSPROPERTY_DD_BDA_SELECT_STREAM = 1,	// DVB-S2: input stream id
@@ -58,7 +58,7 @@ private:
 		DD_SIGNAL_STANDARD_J83B = 16,
 	};
 
-#define NODE_ID_DD_BDA_DIGITAL_DEMODULATOR 1
+	static constexpr ULONG NODE_ID_DD_BDA_DIGITAL_DEMODULATOR = 1;
 
 	struct KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S {
 		KSP_NODE ExtensionProp;
