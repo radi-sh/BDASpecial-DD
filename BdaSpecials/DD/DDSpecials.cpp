@@ -229,7 +229,14 @@ const HRESULT CDDSpecials::ReadIniFile(const WCHAR *szIniFilePath)
 		{ L"J.83B",   DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_J83B },
 	};
 
-	std::map<unsigned int, TuningSpaceData*>::iterator itSpace;
+	static const std::map<const std::wstring, const int> mapGetSignalStrengthFunction = {
+		{ L"",        -1 },
+		{ L"SignalStrength", KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_STRENGTH },
+		{ L"SignalQuality",  KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_QUALITY },
+		{ L"SNR",            KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_SNR },
+		{ L"BER",            KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_BER },
+		{ L"BITRATE",        KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_BITRATE },
+	};
 
 	CIniFileAccess IniFileAccess(szIniFilePath);
 	IniFileAccess.SetSectionName(L"DD");
@@ -245,6 +252,8 @@ const HRESULT CDDSpecials::ReadIniFile(const WCHAR *szIniFilePath)
 
 	// Select Stream 処理でTSMFを無効にする
 	m_bDisableTSMF = IniFileAccess.ReadKeyB(L"DisableTSMF", 0);
+	// GetSignalStrength 関数で返す値
+	m_nGetSignalStrengthFunction = (KSPROPERTY_DD_BDA_SIGNAL_INFO)IniFileAccess.ReadKeyIValueMap(L"GetSignalStrengthFunction", -1, mapGetSignalStrengthFunction);
 
 	/* Test用コード */
 	// IKsControl::KsProperty() の前後に IBDA_DeviceControl::StartChanges() / IBDA_DeviceControl::CommitChanges() が必要
@@ -282,7 +291,43 @@ const HRESULT CDDSpecials::Decode(BYTE *pBuf, DWORD dwSize)
 
 const HRESULT CDDSpecials::GetSignalStrength(float *fVal)
 {
-	return E_NOINTERFACE;
+	if (m_nGetSignalStrengthFunction == -1) {
+		return E_NOINTERFACE;
+	}
+
+	if (!fVal)
+		return E_INVALIDARG;
+
+	HRESULT hr;
+	SignalInfo signalInfo;
+	ULONG BytesReturned = 0;
+	KSPROPERTY_DD_BDA_SIGNAL_INFO_S PropSignalInfo(m_nGetSignalStrengthFunction, KSPROPERTY_TYPE_GET);
+	if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropSignalInfo, sizeof(PropSignalInfo), &signalInfo, sizeof(signalInfo), &BytesReturned))) {
+		OutputDebug(L"SignalInfo: Fail to IKsControl::KsProperty() KSPROPERTY_TYPE_GET function. ret=0x%08lx\n", hr);
+		return hr;
+	}
+	*fVal = 0.0F;
+	switch (m_nGetSignalStrengthFunction) {
+	case KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_STRENGTH:
+		*fVal = (float)signalInfo.Strength / 10.0F;
+		break;
+	case KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_QUALITY:
+		*fVal = (float)signalInfo.Quality;
+		break;
+	case KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_SNR:
+		*fVal = (float)signalInfo.SNR / 10.0F;
+		break;
+	case KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_BER:
+		if (signalInfo.BER.Denominator == 0) {
+			*fVal = -1;
+		}
+		else {
+			*fVal = (float)signalInfo.BER.Numerator / (float)signalInfo.BER.Denominator;
+		}
+		break;
+	}
+
+	return S_OK;
 }
 
 const HRESULT CDDSpecials::PreTuneRequest(const TuningParam *pTuningParm, ITuneRequest *pITuneRequest)
@@ -334,17 +379,20 @@ const HRESULT CDDSpecials::PostLockChannel(const TuningParam *pTuningParm)
 		return S_OK;
 	}
 	HRESULT hr;
+	SelectStream writeStream;
 	ULONG value = 0;
 	ULONG ss = m_TuningData.GetSignalStandard(pTuningParm->IniSpaceID);
 	switch (ss) {
 	case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_ISDBC:
-		value = (m_bSelectStreamRelative ? 0L : (pTuningParm->ONID & 0xFFFFL) << 16) + (m_bDisableTSMF ? 0xFFFFL : (pTuningParm->TSID & 0xFFFFL));
+		writeStream.ISDBC.TSID = m_bDisableTSMF ? 0xFFFFU : (USHORT)pTuningParm->TSID;
+		writeStream.ISDBC.ONID = m_bSelectStreamRelative ? 0U : (USHORT)pTuningParm->ONID;
 		break;
 	case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_ISDBS:
-		value = (m_bSelectStreamRelative ? 0L : 0x10000L) + (pTuningParm->TSID & 0xFFFFL);
+		writeStream.ISDBS.TSID = (USHORT)pTuningParm->TSID;
+		writeStream.ISDBS.Flag = m_bSelectStreamRelative ? 0U : 1U;
 		break;
 	case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_DVBS2:
-		value = (pTuningParm->SID & 0xFFFFL);
+		writeStream.DVBS2.StreamID = (USHORT)pTuningParm->SID;
 		break;
 	}
 	switch (ss) {
@@ -358,7 +406,7 @@ const HRESULT CDDSpecials::PostLockChannel(const TuningParam *pTuningParm)
 			OutputDebug(L"SelectStream: Fail to IKsControl::KsProperty() KSPROPERTY_TYPE_GET function. ret=0x%08lx\n", hr);
 			return E_FAIL;
 		}
-		OutputDebug(L"SelectStream: Succeeded to IKsControl::KsProperty() KSPROPERTY_TYPE_GET function. bytes=%ld, val=%ld\n", BytesReturned, val);
+		OutputDebug(L"SelectStream: Succeeded to IKsControl::KsProperty() KSPROPERTY_TYPE_GET function. bytes=%ld, val=0x%08lx\n", BytesReturned, val);
 		val = value;
 		/* Test用コード */
 		if (m_bNeedCommitChanges) {
@@ -369,8 +417,8 @@ const HRESULT CDDSpecials::PostLockChannel(const TuningParam *pTuningParm)
 		}
 		/* Test用コード終わり */
 		PropStream.SetFlags(KSPROPERTY_TYPE_SET);
-		OutputDebug(L"SelectStream: trying to set. val=%ld.\n", val);
-		if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStream, sizeof(PropStream), &val, sizeof(val), NULL))) {
+		OutputDebug(L"SelectStream: trying to set. val=0x%08lx.\n", writeStream.alignment);
+		if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStream, sizeof(PropStream), &writeStream, sizeof(writeStream), NULL))) {
 			OutputDebug(L"SelectStream: Fail to IKsControl::KsProperty() KSPROPERTY_TYPE_SET function. ret=0x%08lx\n", hr);
 			return E_FAIL;
 		}

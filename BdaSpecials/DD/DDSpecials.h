@@ -83,6 +83,81 @@ private:
 		}
 	};
 
+	struct SelectStream {
+		union {
+			struct {
+				USHORT StreamID;
+			} DVBS2;
+			struct {
+				USHORT Profile;
+			} DVBT2;
+			struct {
+				USHORT DataSliceID;
+			} DVBC2;
+			struct {
+				USHORT TSID;
+				USHORT ONID;
+			} ISDBC;
+			struct {
+				USHORT TSID;
+				USHORT Flag;
+			} ISDBS;
+			ULONG alignment;
+		};
+		SelectStream(void)
+			: alignment(0)
+		{
+		}
+	};
+
+	static constexpr GUID KSPROPERTYSET_DD_BDA_SIGNAL_INFO = { 0x0aa8a602, 0xa240, 0x11de, {0xb1, 0x30, 0x00, 0x00, 0x00, 0x00, 0x4d, 0x56} };
+
+	enum KSPROPERTY_DD_BDA_SIGNAL_INFO {
+		KSPROPERTY_DD_BDA_SIGNAL_IQ,			// ARRAY OF SHORT (only supported on a subset of the hardware)
+		KSPROPERTY_DD_BDA_SIGNAL_SNR,			// LONG  ( dB * 10 )
+		KSPROPERTY_DD_BDA_SIGNAL_BER,			// ULONG*2 ( Numerator,Denominator )  Pre RS/BCH
+		KSPROPERTY_DD_BDA_SIGNAL_BITRATE,		// ULONG ( calculated Bitrate )
+		KSPROPERTY_DD_BDA_SIGNAL_OFFSET,		// LONG  ( frequency offset , returns 0 if not supported )
+		KSPROPERTY_DD_BDA_SIGNAL_LOSTCOUNT,		// ULONG ( signal lost count )
+		KSPROPERTY_DD_BDA_SIGNAL_QUALITY,		// LONG  ( Quality as defined by Nordig 2.4)
+		KSPROPERTY_DD_BDA_SIGNAL_STRENGTH,		// LONG  ( dBｵV * 10 )
+		KSPROPERTY_DD_BDA_SIGNAL_STANDARD,		// ULONG ( see enumeration below )
+		KSPROPERTY_DD_BDA_SIGNAL_SYMBOLRATE,	// ULONG ( current symbolrate, returns 0 if not supported )
+	};
+
+	static constexpr ULONG NODE_ID_DD_BDA_SIGNAL_INFO = 1;
+
+	struct KSPROPERTY_DD_BDA_SIGNAL_INFO_S {
+		KSP_NODE ExtensionProp;
+		KSPROPERTY_DD_BDA_SIGNAL_INFO_S(ULONG Id)
+		{
+			ExtensionProp.Property = { KSPROPERTYSET_DD_BDA_SIGNAL_INFO, Id, 0 };
+			ExtensionProp.NodeId = NODE_ID_DD_BDA_SIGNAL_INFO;
+			ExtensionProp.Reserved = 0;
+		}
+		KSPROPERTY_DD_BDA_SIGNAL_INFO_S(ULONG Id, ULONG flags)
+			: KSPROPERTY_DD_BDA_SIGNAL_INFO_S(Id)
+		{
+			SetFlags(flags);
+		}
+		void SetFlags(ULONG flags) {
+			ExtensionProp.Property.Flags = flags;
+		}
+	};
+
+	struct SignalInfo {
+		union {
+			LONG SNR;
+			struct {
+				ULONG Numerator;
+				ULONG Denominator;
+			} BER;
+			ULONG Bitrate;
+			LONG Quality;
+			LONG Strength;
+		};
+	};
+
 	HMODULE m_hMySelf;
 	CComPtr<IKsControl> m_pControlTunerOutputPin;
 	CComPtr<IBaseFilter> m_pTunerDevice;
@@ -145,4 +220,5 @@ private:
 	BOOL m_bNeedCommitChanges;
 	/* Test用コード終わり */
 	BOOL m_bDisableTSMF;
+	KSPROPERTY_DD_BDA_SIGNAL_INFO m_nGetSignalStrengthFunction;
 };
