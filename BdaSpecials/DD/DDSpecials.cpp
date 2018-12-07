@@ -38,7 +38,7 @@ __declspec(dllexport) HRESULT CheckAndInitTuner(IBaseFilter *pTunerDevice, const
 	CIniFileAccess IniFileAccess(szIniFilePath);
 
 	// DebugLogを記録するかどうか
-	if (IniFileAccess.ReadKeyB(L"DD", L"DebugLog", 0)) {
+	if (IniFileAccess.ReadKeyB(L"DD", L"DebugLog", FALSE)) {
 		// DebugLogのファイル名取得
 		SetDebugLog(common::GetModuleName(hMySelf) + L"log");
 	}
@@ -242,22 +242,23 @@ const HRESULT CDDSpecials::ReadIniFile(const WCHAR *szIniFilePath)
 	IniFileAccess.SetSectionName(L"DD");
 
 	// Select Standard 処理を行う
-	m_bEnableSelectStandard = IniFileAccess.ReadKeyB(L"EnableSelectStandard", 0);
+	m_bEnableSelectStandard = IniFileAccess.ReadKeyB(L"EnableSelectStandard", FALSE);
 
 	// Select Stream 処理を行う
-	m_bEnableSelectStream = IniFileAccess.ReadKeyB(L"EnableSelectStream", 0);
+	m_bEnableSelectStream = IniFileAccess.ReadKeyB(L"EnableSelectStream", FALSE);
 
 	// Select Stream 処理でTSIDを相対でセットする
-	m_bSelectStreamRelative = IniFileAccess.ReadKeyB(L"SelectStreamRelative", 0);
+	m_bSelectStreamRelative = IniFileAccess.ReadKeyB(L"SelectStreamRelative", FALSE);
 
 	// Select Stream 処理でTSMFを無効にする
-	m_bDisableTSMF = IniFileAccess.ReadKeyB(L"DisableTSMF", 0);
+	m_bDisableTSMF = IniFileAccess.ReadKeyB(L"DisableTSMF", FALSE);
+
 	// GetSignalStrength 関数で返す値
 	m_nGetSignalStrengthFunction = (KSPROPERTY_DD_BDA_SIGNAL_INFO)IniFileAccess.ReadKeyIValueMap(L"GetSignalStrengthFunction", -1, mapGetSignalStrengthFunction);
 
 	/* Test用コード */
 	// IKsControl::KsProperty() の前後に IBDA_DeviceControl::StartChanges() / IBDA_DeviceControl::CommitChanges() が必要
-	m_bNeedCommitChanges = IniFileAccess.ReadKeyB(L"NeedCommitChanges", 0);
+	m_bNeedCommitChanges = IniFileAccess.ReadKeyB(L"NeedCommitChanges", FALSE);
 	/* Test用コード終わり */
 
 	if (m_bEnableSelectStandard) {
