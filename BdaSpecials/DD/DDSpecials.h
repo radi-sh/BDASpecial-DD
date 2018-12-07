@@ -41,6 +41,11 @@ private:
 												// DVB-C2: Data Slice ID
 												// ISDB-C: High Word = ONID, Low Word = TSID.  ONID == 0 -> TSID is relative, TSID == 0xFFFF -> disable TSMF
 												// ISDB-S: High Word = Flag, Low Word = TSID.  Flag == 0 -> TSID is relative
+		KSPROPERTY_DD_BDA_S2_ISI = KSPROPERTY_DD_BDA_SELECT_STREAM,
+		KSPROPERTY_DD_BDA_S2_PLSSI = 2,			// Sets DVB-S2 physical layer scrambling sequence index (Gold code)
+		KSPROPERTY_DD_BDA_S2_MODMASK = 3,		// Sets DVB-S2/S2X Modulation Mask 
+		KSPROPERTY_DD_BDA_IQ_MODE = 5,			// Enables IQ output on cards which supports it (0 = normal, 1 = IQ Symbols, 2 = IQ Samples)
+		KSPROPERTY_DD_BDA_BBFRAME_MODE = 6,		// Enables BBFRAMES output on cards which supports it
 	};
 
 	enum DD_SIGNAL_STANDARD {
