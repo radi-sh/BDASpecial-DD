@@ -155,13 +155,21 @@ private:
 			ULONG Bitrate;
 			LONG Quality;
 			LONG Strength;
+			LONG Offset;
+			ULONG LostCount;
+			ULONG Standard;
+			ULONG SymbolRate;
 		};
 	};
 
 	HMODULE m_hMySelf;
 	CComPtr<IKsControl> m_pControlTunerOutputPin;
+	CComPtr<IBDA_DeviceControl> m_pIBDA_DeviceControl;
+	CComPtr<IBDA_LNBInfo> m_pIBDA_LNBInfo;
+	CComPtr<IBDA_DigitalDemodulator> m_pIBDA_DigitalDemodulator;
+	CComPtr<IBDA_FrequencyFilter> m_pIBDA_FrequencyFilter;
+	CComPtr<IBDA_SignalStatistics> m_pIBDA_SignalStatistics;
 	CComPtr<IBaseFilter> m_pTunerDevice;
-	CComPtr<IBDA_DeviceControl> m_pDeviceControl;
 
 	// チューニングスペース毎のデータ
 	struct TuningSpaceData {
@@ -213,12 +221,7 @@ private:
 	};
 	TuningData m_TuningData;
 
-	BOOL m_bEnableSelectStandard;
-	BOOL m_bEnableSelectStream;
 	BOOL m_bSelectStreamRelative;
-	/* Test用コード */
-	BOOL m_bNeedCommitChanges;
-	/* Test用コード終わり */
 	BOOL m_bDisableTSMF;
 	KSPROPERTY_DD_BDA_SIGNAL_INFO m_nGetSignalStrengthFunction;
 };

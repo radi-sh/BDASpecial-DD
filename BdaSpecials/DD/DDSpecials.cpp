@@ -7,6 +7,7 @@
 
 #include <dshow.h>
 #include "CIniFileAccess.h"
+#include "WaitWithMsg.h"
 
 FILE *g_fpLog = NULL;
 
@@ -67,15 +68,19 @@ const HRESULT CDDSpecials::InitializeHook(void)
 	}
 
 	HRESULT hr;
-	CComQIPtr<IBDA_DeviceControl> pDeviceControl(m_pTunerDevice);
-	if (!pDeviceControl) {
-		OutputDebug(L"Can not get IBDA_DeviceControl.\n");
-		return E_NOINTERFACE;
-	}
-	m_pDeviceControl = pDeviceControl;
 
-	if (m_pControlTunerOutputPin == NULL) {
-		// チューナーデバイスの output pinを見つける
+	// IBDA_DeviceControl
+	{
+		CComQIPtr<IBDA_DeviceControl> pDeviceControl(m_pTunerDevice);
+		if (!pDeviceControl) {
+			OutputDebug(L"Can not get IBDA_DeviceControl.\n");
+			return E_NOINTERFACE;
+		}
+		m_pIBDA_DeviceControl = pDeviceControl;
+	}
+
+	// チューナーデバイスの output pinを見つける
+	{
 		CComPtr<IEnumPins> pPinEnum;
 		m_pTunerDevice->EnumPins(&pPinEnum);
 		if (pPinEnum) {
@@ -99,77 +104,118 @@ const HRESULT CDDSpecials::InitializeHook(void)
 				}
 			}
 		}
+	}
+	if (!m_pControlTunerOutputPin) {
+		OutputDebug(L"Fail to get IKsPropertySet of tuner output pin.\n");
+		return E_NOINTERFACE;
+	}
 
-		if (!m_pControlTunerOutputPin) {
-			OutputDebug(L"Fail to get IKsPropertySet of tuner output pin.\n");
+	// IBDA_LNBInfo / IBDA_DigitalDemodulator / IBDA_FrequencyFilter / IBDA_SignalStatistics
+	{
+		CComQIPtr<IBDA_Topology> pIBDA_Topology(m_pTunerDevice);
+		if (!pIBDA_Topology) {
+			OutputDebug(L"LockChannel: Fail to get IBDA_Topology interface.\n");
 			return E_NOINTERFACE;
 		}
-		
-		if (!m_bEnableSelectStandard) {
-			OutputDebug(L"SelectStandard is disabled.\n");
+		OutputDebug(L"LockChannel: Succeeded to get IBDA_Topology interface.\n");
+
+		ULONG NodeTypes;
+		ULONG NodeType[32];
+		if (FAILED(hr = pIBDA_Topology->GetNodeTypes(&NodeTypes, 32, NodeType))) {
+			OutputDebug(L"LockChannel: Fail to get NodeTypes.\n");
+			return E_NOINTERFACE;
 		}
-		else {
-			// KSPROPERTY_DD_BDA_SELECT_STANDARD がサポートされているか確認
-			DWORD TypeSupport = 0;
-			ULONG BytesReturned = 0;
-			KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S PropStandard(KSPROPERTY_DD_BDA_SELECT_STANDARD, KSPROPERTY_TYPE_BASICSUPPORT);
-			if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStandard, sizeof(PropStandard), &TypeSupport, sizeof(TypeSupport), &BytesReturned))) {
-				switch (hr) {
-				case E_NOTIMPL:
-				case E_PROP_SET_UNSUPPORTED:
-					OutputDebug(L"KSPROPERTYSET_DD_BDA_DIGITAL_DEMODULATOR property set is not supported.\n");
-					break;
-
-				case E_PROP_ID_UNSUPPORTED:
-					OutputDebug(L"KSPROPERTY_DD_BDA_SELECT_STANDARD property ID is not supported.\n");
-					break;
-
-				default:
-					OutputDebug(L"KSPROPERTY_DD_BDA_SELECT_STANDARD:KSPROPERTY_TYPE_BASICSUPPORT: Fail to IKsControl::KsProperty() function.\n");
+		OutputDebug(L"LockChannel: Succeeded to get NodeTypes. Num=%ld.\n", NodeTypes);
+		for (ULONG i = 0; i < NodeTypes; i++) {
+			CComPtr<IUnknown> pControlNode;
+			if (SUCCEEDED(hr = pIBDA_Topology->GetControlNode(0UL, 1UL, NodeType[i], &pControlNode))) {
+				OutputDebug(L"LockChannel: GetControlNode(0, 1, NodeType[%ld]).\n", i);
+				CComQIPtr<IBDA_LNBInfo> pIBDA_LNBInfo(pControlNode);
+				if (!m_pIBDA_LNBInfo) {
+					m_pIBDA_LNBInfo = pIBDA_LNBInfo;
+					OutputDebug(L"  Found IBDA_LNBInfo.\n");
+				}
+				CComQIPtr<IBDA_DigitalDemodulator> pIBDA_DigitalDemodulator(pControlNode);
+				if (!m_pIBDA_DigitalDemodulator) {
+					m_pIBDA_DigitalDemodulator = pIBDA_DigitalDemodulator;
+					OutputDebug(L"  Found IBDA_DigitalDemodulator.\n");
+				}
+				CComQIPtr<IBDA_FrequencyFilter> pIBDA_FrequencyFilter(pControlNode);
+				if (!m_pIBDA_FrequencyFilter) {
+					m_pIBDA_FrequencyFilter = pIBDA_FrequencyFilter;
+					OutputDebug(L"  Found IBDA_FrequencyFilter.\n");
+				}
+				CComQIPtr<IBDA_SignalStatistics> pIBDA_SignalStatistics(pControlNode);
+				if (!m_pIBDA_SignalStatistics) {
+					m_pIBDA_SignalStatistics = pIBDA_SignalStatistics;
+					OutputDebug(L"  Found IBDA_SignalStatistics.\n");
+				}
+				if (m_pIBDA_LNBInfo && m_pIBDA_DigitalDemodulator && m_pIBDA_FrequencyFilter && m_pIBDA_SignalStatistics) {
+					OutputDebug(L"LockChannel: All control nodes was found.\n");
 					break;
 				}
-				return E_NOINTERFACE;
 			}
-			OutputDebug(L"KSPROPERTY_DD_BDA_SELECT_STANDARD: TypeSupport=%ld.\n", TypeSupport);
-			if (!(TypeSupport & KSPROPERTY_SUPPORT_SET)) {
-				OutputDebug(L"KSPROPERTY_DD_BDA_SELECT_STANDARD property ID does not support KSPROPERTY_TYPE_SET.\n");
-				return E_NOINTERFACE;
-			}
-			OutputDebug(L"SelectStandard is enabled.\n");
 		}
+	}
 
-		if (!m_bEnableSelectStream) {
-			OutputDebug(L"SelectStream is disabled.\n");
-		}
-		else {
-			// KSPROPERTY_DD_BDA_SELECT_STREAM がサポートされているか確認
-			DWORD TypeSupport = 0;
-			ULONG BytesReturned = 0;
-			KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S PropStream(KSPROPERTY_DD_BDA_SELECT_STREAM, KSPROPERTY_TYPE_BASICSUPPORT);
-			if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStream, sizeof(PropStream), &TypeSupport, sizeof(TypeSupport), &BytesReturned))) {
-				switch (hr) {
-				case E_NOTIMPL:
-				case E_PROP_SET_UNSUPPORTED:
-					OutputDebug(L"KSPROPERTYSET_DD_BDA_DIGITAL_DEMODULATOR property set is not supported.\n");
-					break;
+	// KSPROPERTY_DD_BDA_SELECT_STANDARD がサポートされているか確認
+	{
+		DWORD TypeSupport = 0;
+		ULONG BytesReturned = 0;
+		KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S PropStandard(KSPROPERTY_DD_BDA_SELECT_STANDARD, KSPROPERTY_TYPE_BASICSUPPORT);
+		if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStandard, sizeof(PropStandard), &TypeSupport, sizeof(TypeSupport), &BytesReturned))) {
+			switch (hr) {
+			case E_NOTIMPL:
+			case E_PROP_SET_UNSUPPORTED:
+				OutputDebug(L"KSPROPERTYSET_DD_BDA_DIGITAL_DEMODULATOR property set is not supported.\n");
+				break;
 
-				case E_PROP_ID_UNSUPPORTED:
-					OutputDebug(L"KSPROPERTY_DD_BDA_SELECT_STREAM property ID is not supported.\n");
-					break;
+			case E_PROP_ID_UNSUPPORTED:
+				OutputDebug(L"KSPROPERTY_DD_BDA_SELECT_STANDARD property ID is not supported.\n");
+				break;
 
-				default:
-					OutputDebug(L"KSPROPERTY_DD_BDA_SELECT_STREAM:KSPROPERTY_TYPE_BASICSUPPORT: Fail to IKsControl::KsProperty() function.\n");
-					break;
-				}
-				return E_NOINTERFACE;
+			default:
+				OutputDebug(L"KSPROPERTY_DD_BDA_SELECT_STANDARD:KSPROPERTY_TYPE_BASICSUPPORT: Fail to IKsControl::KsProperty() function.\n");
+				break;
 			}
-			OutputDebug(L"KSPROPERTY_DD_BDA_SELECT_STREAM: TypeSupport=%ld.\n", TypeSupport);
-			if (!(TypeSupport & KSPROPERTY_SUPPORT_SET)) {
-				OutputDebug(L"KSPROPERTY_DD_BDA_SELECT_STREAM property ID does not support KSPROPERTY_TYPE_SET.\n");
-				return E_NOINTERFACE;
-			}
-			OutputDebug(L"SelectStream is enabled.\n");
+			return E_NOINTERFACE;
 		}
+		OutputDebug(L"KSPROPERTY_DD_BDA_SELECT_STANDARD: TypeSupport=%ld.\n", TypeSupport);
+		if (!(TypeSupport & KSPROPERTY_SUPPORT_SET)) {
+			OutputDebug(L"KSPROPERTY_DD_BDA_SELECT_STANDARD property ID does not support KSPROPERTY_TYPE_SET.\n");
+			return E_NOINTERFACE;
+		}
+		OutputDebug(L"SelectStandard is enabled.\n");
+	}
+
+	// KSPROPERTY_DD_BDA_SELECT_STREAM がサポートされているか確認
+	{
+		DWORD TypeSupport = 0;
+		ULONG BytesReturned = 0;
+		KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S PropStream(KSPROPERTY_DD_BDA_SELECT_STREAM, KSPROPERTY_TYPE_BASICSUPPORT);
+		if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStream, sizeof(PropStream), &TypeSupport, sizeof(TypeSupport), &BytesReturned))) {
+			switch (hr) {
+			case E_NOTIMPL:
+			case E_PROP_SET_UNSUPPORTED:
+				OutputDebug(L"KSPROPERTYSET_DD_BDA_DIGITAL_DEMODULATOR property set is not supported.\n");
+				break;
+
+			case E_PROP_ID_UNSUPPORTED:
+				OutputDebug(L"KSPROPERTY_DD_BDA_SELECT_STREAM property ID is not supported.\n");
+				break;
+
+			default:
+				OutputDebug(L"KSPROPERTY_DD_BDA_SELECT_STREAM:KSPROPERTY_TYPE_BASICSUPPORT: Fail to IKsControl::KsProperty() function.\n");
+				break;
+			}
+			return E_NOINTERFACE;
+		}
+		OutputDebug(L"KSPROPERTY_DD_BDA_SELECT_STREAM: TypeSupport=%ld.\n", TypeSupport);
+		if (!(TypeSupport & KSPROPERTY_SUPPORT_SET)) {
+			OutputDebug(L"KSPROPERTY_DD_BDA_SELECT_STREAM property ID does not support KSPROPERTY_TYPE_SET.\n");
+			return E_NOINTERFACE;
+		}
+		OutputDebug(L"SelectStream is enabled.\n");
 	}
 
 	return S_OK;
@@ -202,7 +248,176 @@ const HRESULT CDDSpecials::LockChannel(BYTE bySatellite, BOOL bHorizontal, unsig
 
 const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParm)
 {
-	return E_NOINTERFACE;
+	if (m_pTunerDevice == NULL) {
+		return E_POINTER;
+	}
+
+	HRESULT hr;
+
+	// トランザクション開始通知
+	if (FAILED(hr = m_pIBDA_DeviceControl->StartChanges())) {
+		OutputDebug(L"LockChannel: Fail to IBDA_DeviceControl::StartChanges() function. ret=0x%08lx\n", hr);
+		return E_FAIL;
+	}
+
+	if (m_pIBDA_LNBInfo) {
+		OutputDebug(L"LockChannel: IBDA_LNBInfo\n");
+		// LNB 周波数を設定
+		if (pTuningParm->Antenna->HighOscillator != -1) {
+			m_pIBDA_LNBInfo->put_LocalOscilatorFrequencyHighBand(pTuningParm->Antenna->HighOscillator);
+		}
+		if (pTuningParm->Antenna->LowOscillator != -1) {
+			m_pIBDA_LNBInfo->put_LocalOscilatorFrequencyLowBand(pTuningParm->Antenna->LowOscillator);
+		}
+
+		// LNBスイッチの周波数を設定
+		if (pTuningParm->Antenna->LNBSwitch != -1) {
+			// LNBSwitch周波数の設定がされている
+			m_pIBDA_LNBInfo->put_HighLowSwitchFrequency(pTuningParm->Antenna->LNBSwitch);
+		}
+		else {
+			// 10GHzを設定しておけばHigh側に、20GHzを設定しておけばLow側に切替わるはず
+			m_pIBDA_LNBInfo->put_HighLowSwitchFrequency((pTuningParm->Antenna->Tone != 0) ? 10000000 : 20000000);
+		}
+	}
+
+	if (m_pIBDA_DigitalDemodulator) {
+		OutputDebug(L"LockChannel: IBDA_DigitalDemodulator\n");
+		// 位相変調スペクトル反転の種類
+		SpectralInversion eSpectralInversion = BDA_SPECTRAL_INVERSION_AUTOMATIC;
+		m_pIBDA_DigitalDemodulator->put_SpectralInversion(&eSpectralInversion);
+
+		// 内部前方誤り訂正のタイプを設定
+		FECMethod eInnerFECMethod = pTuningParm->Modulation->InnerFEC;
+		m_pIBDA_DigitalDemodulator->put_InnerFECMethod(&eInnerFECMethod);
+
+		// 内部 FEC レートを設定
+		BinaryConvolutionCodeRate eInnerFECRate = pTuningParm->Modulation->InnerFECRate;
+		m_pIBDA_DigitalDemodulator->put_InnerFECRate(&eInnerFECRate);
+
+		// 変調タイプを設定
+		ModulationType eModulationType = pTuningParm->Modulation->Modulation;
+		m_pIBDA_DigitalDemodulator->put_ModulationType(&eModulationType);
+
+		// 外部前方誤り訂正のタイプを設定
+		FECMethod eOuterFECMethod = pTuningParm->Modulation->OuterFEC;
+		m_pIBDA_DigitalDemodulator->put_OuterFECMethod(&eOuterFECMethod);
+
+		// 外部 FEC レートを設定
+		BinaryConvolutionCodeRate eOuterFECRate = pTuningParm->Modulation->OuterFECRate;
+		m_pIBDA_DigitalDemodulator->put_OuterFECRate(&eOuterFECRate);
+
+		// QPSK シンボル レートを設定
+		ULONG SymbolRate = (ULONG)pTuningParm->Modulation->SymbolRate;
+		m_pIBDA_DigitalDemodulator->put_SymbolRate(&SymbolRate);
+	}
+
+	if (m_pIBDA_FrequencyFilter) {
+		OutputDebug(L"LockChannel: IBDA_FrequencyFilter\n");
+		// RF 信号の周波数を設定
+		m_pIBDA_FrequencyFilter->put_Frequency((ULONG)pTuningParm->Frequency);
+
+		// 信号の偏波を設定
+		m_pIBDA_FrequencyFilter->put_Polarity(pTuningParm->Polarisation);
+
+		// 周波数の帯域幅 (MHz)を設定
+		if (pTuningParm->Modulation->BandWidth != -1) {
+			m_pIBDA_FrequencyFilter->put_Bandwidth((ULONG)pTuningParm->Modulation->BandWidth);
+		}
+	}
+
+	// 信号規格（ISDB-T/ISDB-S等）をセット
+	{
+		KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S PropStandard(KSPROPERTY_DD_BDA_SELECT_STANDARD, KSPROPERTY_TYPE_SET);
+		ULONG val = m_TuningData.GetSignalStandard(pTuningParm->IniSpaceID);
+		OutputDebug(L"LockChannel: trying to set SelectStandard. val=%ld.\n", val);
+		if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStandard, sizeof(PropStandard), &val, sizeof(val), NULL))) {
+			OutputDebug(L"LockChannel: Fail to IKsControl::KsProperty() KSPROPERTY_TYPE_SET SelectStandard function. ret=0x%08lx\n", hr);
+			return E_FAIL;
+		}
+	}
+
+	// TSID等をセット
+	{
+		SelectStream writeStream;
+		ULONG ss = m_TuningData.GetSignalStandard(pTuningParm->IniSpaceID);
+		switch (ss) {
+		case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_ISDBC:
+			writeStream.ISDBC.TSID = m_bDisableTSMF ? 0xFFFFU : (USHORT)pTuningParm->TSID;
+			writeStream.ISDBC.ONID = m_bSelectStreamRelative ? 0U : (USHORT)pTuningParm->ONID;
+			break;
+		case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_ISDBS:
+			if (pTuningParm->TSID == -1) {
+				writeStream.ISDBS.TSID = 0U;
+				writeStream.ISDBS.Flag = 0U;
+			}
+			else {
+				writeStream.ISDBS.TSID = (USHORT)pTuningParm->TSID;
+				writeStream.ISDBS.Flag = m_bSelectStreamRelative ? 0U : 1U;
+			}
+			break;
+		case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_DVBS2:
+			writeStream.DVBS2.StreamID = (USHORT)pTuningParm->SID;
+			break;
+		}
+		switch (ss) {
+		case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_ISDBC:
+		case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_ISDBS:
+		case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_DVBS2:
+			KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S PropStream(KSPROPERTY_DD_BDA_SELECT_STREAM, KSPROPERTY_TYPE_SET);
+			OutputDebug(L"LockChannel: trying to set SelectStream. val=0x%08lx.\n", writeStream.alignment);
+			if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStream, sizeof(PropStream), &writeStream, sizeof(writeStream), NULL))) {
+				OutputDebug(L"LockChannel: Fail to IKsControl::KsProperty() KSPROPERTY_TYPE_SET SelectStream function. ret=0x%08lx\n", hr);
+				return E_FAIL;
+			}
+			break;
+		}
+	}
+
+	// トランザクションのコミット
+	if (FAILED(hr = m_pIBDA_DeviceControl->CommitChanges())) {
+		OutputDebug(L"LockChannel: Fail to IBDA_DeviceControl::CommitChanges() function. ret=0x%08lx\n", hr);
+		// 全ての変更を取り消す
+		hr = m_pIBDA_DeviceControl->StartChanges();
+		hr = m_pIBDA_DeviceControl->CommitChanges();
+		return E_FAIL;
+	}
+	OutputDebug(L"LockChannel: Succeeded to IBDA_DeviceControl::CommitChanges() function.\n");
+
+	// 信号規格（ISDB-T/ISDB-S等）の確認（Logのみ）
+	{
+		KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S PropStandard(KSPROPERTY_DD_BDA_SELECT_STANDARD, KSPROPERTY_TYPE_GET);
+		ULONG val = 0;
+		ULONG BytesReturned = 0;
+		PropStandard.SetFlags(KSPROPERTY_TYPE_GET);
+		if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStandard, sizeof(PropStandard), &val, sizeof(val), &BytesReturned))) {
+			OutputDebug(L"LockChannel: Fail to IKsControl::KsProperty() KSPROPERTY_TYPE_GET SelectStandard function. ret=0x%08lx\n", hr);
+			return E_FAIL;
+		}
+		OutputDebug(L"LockChannel: Succeeded to IKsControl::KsProperty() KSPROPERTY_TYPE_GET SelectStandard function. bytes=%ld, val=%ld\n", BytesReturned, val);
+	}
+
+	// TSID等の確認（Logのみ）
+	{
+		KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S PropStream(KSPROPERTY_DD_BDA_SELECT_STREAM, KSPROPERTY_TYPE_GET);
+		ULONG val = 0;
+		ULONG BytesReturned = 0;
+		if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStream, sizeof(PropStream), &val, sizeof(val), &BytesReturned))) {
+			OutputDebug(L"LockChannel: Fail to IKsControl::KsProperty() KSPROPERTY_TYPE_GET SelectStream function. ret=0x%08lx\n", hr);
+			return E_FAIL;
+		}
+		OutputDebug(L"LockChannel: Succeeded to IKsControl::KsProperty() KSPROPERTY_TYPE_GET SelectStream function. bytes=%ld, val=0x%08lx\n", BytesReturned, val);
+	}
+
+	if (!m_pIBDA_SignalStatistics) {
+		// 確認できないのでそのままS_OKを返す
+		return S_OK;
+	}
+
+	BOOLEAN locked = 0;
+	hr = m_pIBDA_SignalStatistics->get_SignalLocked(&locked);
+
+	return locked ? S_OK : E_FAIL;
 }
 
 const HRESULT CDDSpecials::SetLNBPower(bool bActive)
@@ -231,21 +446,19 @@ const HRESULT CDDSpecials::ReadIniFile(const WCHAR *szIniFilePath)
 
 	static const std::map<const std::wstring, const int> mapGetSignalStrengthFunction = {
 		{ L"",        -1 },
-		{ L"SignalStrength", KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_STRENGTH },
-		{ L"SignalQuality",  KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_QUALITY },
+		{ L"SIGNALSTRENGTH", KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_STRENGTH },
+		{ L"SIGNALQUALITY",  KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_QUALITY },
 		{ L"SNR",            KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_SNR },
 		{ L"BER",            KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_BER },
 		{ L"BITRATE",        KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_BITRATE },
+		{ L"OFFSET",         KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_OFFSET },
+		{ L"LOSTCOUNT",      KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_LOSTCOUNT },
+		{ L"STANDARD",       KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_STANDARD },
+		{ L"SYMBOLRATE",     KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_SYMBOLRATE },
 	};
 
 	CIniFileAccess IniFileAccess(szIniFilePath);
 	IniFileAccess.SetSectionName(L"DD");
-
-	// Select Standard 処理を行う
-	m_bEnableSelectStandard = IniFileAccess.ReadKeyB(L"EnableSelectStandard", FALSE);
-
-	// Select Stream 処理を行う
-	m_bEnableSelectStream = IniFileAccess.ReadKeyB(L"EnableSelectStream", FALSE);
 
 	// Select Stream 処理でTSIDを相対でセットする
 	m_bSelectStreamRelative = IniFileAccess.ReadKeyB(L"SelectStreamRelative", FALSE);
@@ -256,22 +469,15 @@ const HRESULT CDDSpecials::ReadIniFile(const WCHAR *szIniFilePath)
 	// GetSignalStrength 関数で返す値
 	m_nGetSignalStrengthFunction = (KSPROPERTY_DD_BDA_SIGNAL_INFO)IniFileAccess.ReadKeyIValueMap(L"GetSignalStrengthFunction", -1, mapGetSignalStrengthFunction);
 
-	/* Test用コード */
-	// IKsControl::KsProperty() の前後に IBDA_DeviceControl::StartChanges() / IBDA_DeviceControl::CommitChanges() が必要
-	m_bNeedCommitChanges = IniFileAccess.ReadKeyB(L"NeedCommitChanges", FALSE);
-	/* Test用コード終わり */
-
-	if (m_bEnableSelectStandard) {
-		// チューニング空間00～99の設定を読込
-		for (DWORD space = 0; space < 100; space++) {
-			std::wstring section = common::WStringPrintf(L"TUNINGSPACE%02d", space);
-			if (IniFileAccess.ReadSection(section) <= 0) {
-				continue;
-			}
-			IniFileAccess.CreateSectionData();
-			DD_SIGNAL_STANDARD ss = (DD_SIGNAL_STANDARD)IniFileAccess.ReadKeyIValueMapSectionData(L"DD_SelectStandard", DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_UNDEFINED, mapSignalStandard);
-			m_TuningData.Regist(space, ss);
+	// チューニング空間00～99の設定を読込
+	for (DWORD space = 0; space < 100; space++) {
+		std::wstring section = common::WStringPrintf(L"TUNINGSPACE%02d", space);
+		if (IniFileAccess.ReadSection(section) <= 0) {
+			continue;
 		}
+		IniFileAccess.CreateSectionData();
+		DD_SIGNAL_STANDARD ss = (DD_SIGNAL_STANDARD)IniFileAccess.ReadKeyIValueMapSectionData(L"DD_SelectStandard", DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_UNDEFINED, mapSignalStandard);
+		m_TuningData.Regist(space, ss);
 	}
 
 	return S_OK;
@@ -326,6 +532,21 @@ const HRESULT CDDSpecials::GetSignalStrength(float *fVal)
 			*fVal = (float)signalInfo.BER.Numerator / (float)signalInfo.BER.Denominator;
 		}
 		break;
+	case KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_BITRATE:
+		*fVal = (float)signalInfo.Bitrate;
+		break;
+	case KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_OFFSET:
+		*fVal = (float)signalInfo.Offset;
+		break;
+	case KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_LOSTCOUNT:
+		*fVal = (float)signalInfo.LostCount;
+		break;
+	case KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_STANDARD:
+		*fVal = (float)signalInfo.Standard;
+		break;
+	case KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_SYMBOLRATE:
+		*fVal = (float)signalInfo.SymbolRate;
+		break;
 	}
 
 	return S_OK;
@@ -333,110 +554,12 @@ const HRESULT CDDSpecials::GetSignalStrength(float *fVal)
 
 const HRESULT CDDSpecials::PreTuneRequest(const TuningParam *pTuningParm, ITuneRequest *pITuneRequest)
 {
-	if (!m_pControlTunerOutputPin || !m_bEnableSelectStandard) {
-		return S_OK;
-	}
-	HRESULT hr;
-	ULONG val = 0;
-	ULONG BytesReturned = 0;
-	KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S PropStandard(KSPROPERTY_DD_BDA_SELECT_STANDARD, KSPROPERTY_TYPE_GET);
-	if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStandard, sizeof(PropStandard), &val, sizeof(val), &BytesReturned))) {
-		OutputDebug(L"SelectStandard: Fail to IKsControl::KsProperty() KSPROPERTY_TYPE_GET function. ret=0x%08lx\n", hr);
-		return E_FAIL;
-	}
-	OutputDebug(L"SelectStandard: Succeeded to IKsControl::KsProperty() KSPROPERTY_TYPE_GET function. bytes=%ld, val=%ld\n", BytesReturned, val);
-	val = m_TuningData.GetSignalStandard(pTuningParm->IniSpaceID);
-	/* Test用コード */
-	if (m_bNeedCommitChanges) {
-		if (FAILED(hr = m_pDeviceControl->StartChanges())) {
-			OutputDebug(L"SelectStandard: Fail to IBDA_DeviceControl::StartChanges() function. ret=0x%08lx\n", hr);
-			return E_FAIL;
-		}
-	}
-	/* Test用コード終わり */
-	PropStandard.SetFlags(KSPROPERTY_TYPE_SET);
-	OutputDebug(L"SelectStandard: trying to set. val=%ld.\n", val);
-	if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStandard, sizeof(PropStandard), &val, sizeof(val), NULL))) {
-		OutputDebug(L"SelectStandard: Fail to IKsControl::KsProperty() KSPROPERTY_TYPE_SET function. ret=0x%08lx\n", hr);
-		return E_FAIL;
-	}
-	/* Test用コード */
-	if (m_bNeedCommitChanges) {
-		if (FAILED(hr = m_pDeviceControl->CommitChanges())) {
-			OutputDebug(L"SelectStandard: Fail to IBDA_DeviceControl::CommitChanges() function. ret=0x%08lx\n", hr);
-			// 全ての変更を取り消す
-			hr = m_pDeviceControl->StartChanges();
-			hr = m_pDeviceControl->CommitChanges();
-			return E_FAIL;
-		}
-	}
-	/* Test用コード終わり */
-	return S_OK;
+	return E_NOINTERFACE;
 }
 
 const HRESULT CDDSpecials::PostLockChannel(const TuningParam *pTuningParm)
 {
-	if (!m_pControlTunerOutputPin || !m_bEnableSelectStream) {
-		return S_OK;
-	}
-	HRESULT hr;
-	SelectStream writeStream;
-	ULONG value = 0;
-	ULONG ss = m_TuningData.GetSignalStandard(pTuningParm->IniSpaceID);
-	switch (ss) {
-	case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_ISDBC:
-		writeStream.ISDBC.TSID = m_bDisableTSMF ? 0xFFFFU : (USHORT)pTuningParm->TSID;
-		writeStream.ISDBC.ONID = m_bSelectStreamRelative ? 0U : (USHORT)pTuningParm->ONID;
-		break;
-	case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_ISDBS:
-		writeStream.ISDBS.TSID = (USHORT)pTuningParm->TSID;
-		writeStream.ISDBS.Flag = m_bSelectStreamRelative ? 0U : 1U;
-		break;
-	case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_DVBS2:
-		writeStream.DVBS2.StreamID = (USHORT)pTuningParm->SID;
-		break;
-	}
-	switch (ss) {
-	case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_ISDBC:
-	case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_ISDBS:
-	case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_DVBS2:
-		ULONG val = 0;
-		ULONG BytesReturned = 0;
-		KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S PropStream(KSPROPERTY_DD_BDA_SELECT_STREAM, KSPROPERTY_TYPE_GET);
-		if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStream, sizeof(PropStream), &val, sizeof(val), &BytesReturned))) {
-			OutputDebug(L"SelectStream: Fail to IKsControl::KsProperty() KSPROPERTY_TYPE_GET function. ret=0x%08lx\n", hr);
-			return E_FAIL;
-		}
-		OutputDebug(L"SelectStream: Succeeded to IKsControl::KsProperty() KSPROPERTY_TYPE_GET function. bytes=%ld, val=0x%08lx\n", BytesReturned, val);
-		val = value;
-		/* Test用コード */
-		if (m_bNeedCommitChanges) {
-			if (FAILED(hr = m_pDeviceControl->StartChanges())) {
-				OutputDebug(L"SelectStream: Fail to IBDA_DeviceControl::StartChanges() function. ret=0x%08lx\n", hr);
-				return E_FAIL;
-			}
-		}
-		/* Test用コード終わり */
-		PropStream.SetFlags(KSPROPERTY_TYPE_SET);
-		OutputDebug(L"SelectStream: trying to set. val=0x%08lx.\n", writeStream.alignment);
-		if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStream, sizeof(PropStream), &writeStream, sizeof(writeStream), NULL))) {
-			OutputDebug(L"SelectStream: Fail to IKsControl::KsProperty() KSPROPERTY_TYPE_SET function. ret=0x%08lx\n", hr);
-			return E_FAIL;
-		}
-		/* Test用コード */
-		if (m_bNeedCommitChanges) {
-			if (FAILED(hr = m_pDeviceControl->CommitChanges())) {
-				OutputDebug(L"SelectStream: Fail to IBDA_DeviceControl::CommitChanges() function. ret=0x%08lx\n", hr);
-				// 全ての変更を取り消す
-				hr = m_pDeviceControl->StartChanges();
-				hr = m_pDeviceControl->CommitChanges();
-				return E_FAIL;
-			}
-		}
-		/* Test用コード終わり */
-		break;
-	}
-	return S_OK;
+	return E_NOINTERFACE;
 }
 
 void CDDSpecials::Release(void)
