@@ -53,7 +53,7 @@
   <PropertyGroup Label="Globals">
     <ProjectGuid>{B20F775C-CEED-4E1D-95C7-ACDE0753E6B1}</ProjectGuid>
     <RootNamespace>DD</RootNamespace>
-    <WindowsTargetPlatformVersion>10.0.17134.0</WindowsTargetPlatformVersion>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
@@ -442,7 +442,15 @@
     <ClInclude Include="..\..\common\IBdaSpecials.h" />
     <ClInclude Include="..\..\common\IBdaSpecials2.h" />
     <ClInclude Include="..\..\common\LockChannel.h" />
+    <ClInclude Include="..\..\common\WaitWithMsg.h" />
     <ClInclude Include="DDSpecials.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\..\doc\History-DD.txt" />
+    <Text Include="..\..\doc\Readme-DD.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\doc\BonDriver_MaxM4-sample.ini" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

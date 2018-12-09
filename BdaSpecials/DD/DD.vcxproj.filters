@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav</Extensions>
     </Filter>
+    <Filter Include="doc">
+      <UniqueIdentifier>{a8033213-7848-46da-abc4-a2d3815d27fc}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="DDSpecials.cpp">
@@ -44,5 +47,21 @@
     <ClInclude Include="..\..\common\CIniFileAccess.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\common\WaitWithMsg.h">
+      <Filter>ヘッダー ファイル</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Text Include="..\..\doc\Readme-DD.txt">
+      <Filter>doc</Filter>
+    </Text>
+    <Text Include="..\..\doc\History-DD.txt">
+      <Filter>doc</Filter>
+    </Text>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\doc\BonDriver_MaxM4-sample.ini">
+      <Filter>doc</Filter>
+    </None>
   </ItemGroup>
 </Project>
