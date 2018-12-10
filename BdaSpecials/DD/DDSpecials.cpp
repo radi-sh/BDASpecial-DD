@@ -110,48 +110,59 @@ const HRESULT CDDSpecials::InitializeHook(void)
 		return E_NOINTERFACE;
 	}
 
-	// IBDA_LNBInfo / IBDA_DigitalDemodulator / IBDA_FrequencyFilter / IBDA_SignalStatistics
+	// IBDA_LNBInfo / IBDA_DigitalDemodulator / IBDA_FrequencyFilter / IBDA_DiseqCommand / IBDA_SignalStatistics
 	{
 		CComQIPtr<IBDA_Topology> pIBDA_Topology(m_pTunerDevice);
 		if (!pIBDA_Topology) {
-			OutputDebug(L"LockChannel: Fail to get IBDA_Topology interface.\n");
+			OutputDebug(L"Fail to get IBDA_Topology interface.\n");
 			return E_NOINTERFACE;
 		}
-		OutputDebug(L"LockChannel: Succeeded to get IBDA_Topology interface.\n");
+		OutputDebug(L"Succeeded to get IBDA_Topology interface.\n");
 
 		ULONG NodeTypes;
 		ULONG NodeType[32];
 		if (FAILED(hr = pIBDA_Topology->GetNodeTypes(&NodeTypes, 32, NodeType))) {
-			OutputDebug(L"LockChannel: Fail to get NodeTypes.\n");
+			OutputDebug(L"Fail to get NodeTypes.\n");
 			return E_NOINTERFACE;
 		}
-		OutputDebug(L"LockChannel: Succeeded to get NodeTypes. Num=%ld.\n", NodeTypes);
+		OutputDebug(L"Succeeded to get NodeTypes. Num=%ld.\n", NodeTypes);
 		for (ULONG i = 0; i < NodeTypes; i++) {
 			CComPtr<IUnknown> pControlNode;
 			if (SUCCEEDED(hr = pIBDA_Topology->GetControlNode(0UL, 1UL, NodeType[i], &pControlNode))) {
-				OutputDebug(L"LockChannel: GetControlNode(0, 1, NodeType[%ld]).\n", i);
+				OutputDebug(L"GetControlNode(0, 1, NodeType[%ld]=%ld).\n", i, NodeType[i]);
 				CComQIPtr<IBDA_LNBInfo> pIBDA_LNBInfo(pControlNode);
-				if (!m_pIBDA_LNBInfo) {
-					m_pIBDA_LNBInfo = pIBDA_LNBInfo;
-					OutputDebug(L"  Found IBDA_LNBInfo.\n");
-				}
-				CComQIPtr<IBDA_DigitalDemodulator> pIBDA_DigitalDemodulator(pControlNode);
-				if (!m_pIBDA_DigitalDemodulator) {
-					m_pIBDA_DigitalDemodulator = pIBDA_DigitalDemodulator;
-					OutputDebug(L"  Found IBDA_DigitalDemodulator.\n");
-				}
 				CComQIPtr<IBDA_FrequencyFilter> pIBDA_FrequencyFilter(pControlNode);
-				if (!m_pIBDA_FrequencyFilter) {
-					m_pIBDA_FrequencyFilter = pIBDA_FrequencyFilter;
-					OutputDebug(L"  Found IBDA_FrequencyFilter.\n");
-				}
+				CComQIPtr<IBDA_DiseqCommand> pIBDA_DiseqCommand(pControlNode);
+				CComQIPtr<IBDA_DigitalDemodulator> pIBDA_DigitalDemodulator(pControlNode);
 				CComQIPtr<IBDA_SignalStatistics> pIBDA_SignalStatistics(pControlNode);
-				if (!m_pIBDA_SignalStatistics) {
-					m_pIBDA_SignalStatistics = pIBDA_SignalStatistics;
-					OutputDebug(L"  Found IBDA_SignalStatistics.\n");
+				switch(NodeType[i]) {
+				case 0:
+					if (pIBDA_LNBInfo) {
+						m_pIBDA_LNBInfo = pIBDA_LNBInfo;
+						OutputDebug(L"  Found IBDA_LNBInfo.\n");
+					}
+					if (pIBDA_FrequencyFilter) {
+						m_pIBDA_FrequencyFilter = pIBDA_FrequencyFilter;
+						OutputDebug(L"  Found IBDA_FrequencyFilter.\n");
+					}
+					if (pIBDA_DiseqCommand) {
+						m_pIBDA_DiseqCommand = pIBDA_DiseqCommand;
+						OutputDebug(L"  Found IBDA_DiseqCommand.\n");
+					}
+					if (pIBDA_SignalStatistics) {
+						m_pIBDA_SignalStatistics = pIBDA_SignalStatistics;
+						OutputDebug(L"  Found IBDA_SignalStatistics.\n");
+					}
+					break;
+				case 1:
+					if (pIBDA_DigitalDemodulator) {
+						m_pIBDA_DigitalDemodulator = pIBDA_DigitalDemodulator;
+						OutputDebug(L"  Found IBDA_DigitalDemodulator.\n");
+					}
+					break;
 				}
-				if (m_pIBDA_LNBInfo && m_pIBDA_DigitalDemodulator && m_pIBDA_FrequencyFilter && m_pIBDA_SignalStatistics) {
-					OutputDebug(L"LockChannel: All control nodes was found.\n");
+				if (m_pIBDA_LNBInfo && m_pIBDA_DigitalDemodulator && m_pIBDA_FrequencyFilter && m_pIBDA_DiseqCommand && m_pIBDA_SignalStatistics) {
+					OutputDebug(L"All control nodes was found.\n");
 					break;
 				}
 			}
@@ -252,78 +263,40 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParm)
 		return E_POINTER;
 	}
 
+	if (!m_pIBDA_SignalStatistics) {
+		return E_FAIL;
+	}
+
 	HRESULT hr;
+	SpectralInversion eSpectralInversion = BDA_SPECTRAL_INVERSION_NOT_SET;
+	FECMethod eInnerFECMethod = BDA_FEC_METHOD_NOT_SET;
+	BinaryConvolutionCodeRate eInnerFECRate = BDA_BCC_RATE_NOT_SET;
+	ModulationType eModulationType = BDA_MOD_NOT_SET;
+	FECMethod eOuterFECMethod = BDA_FEC_METHOD_NOT_SET;
+	BinaryConvolutionCodeRate eOuterFECRate = BDA_BCC_RATE_NOT_SET;
+	ULONG SymbolRate = (ULONG)-1L;
+
+	ULONG State;
+	if (FAILED(hr = m_pIBDA_DeviceControl->GetChangeState(&State))) {
+		OutputDebug(L"LockChannel: Fail to IBDA_DeviceControl::GetChangeState() function. ret=0x%08lx\n", hr);
+		return E_FAIL;
+	}
+	// ペンディング状態のトランザクションがあるか確認
+	if (State == BDA_CHANGES_PENDING) {
+		OutputDebug(L"LockChannel: Some changes are pending. Trying CommitChanges.\n");
+		// トランザクションのコミット
+		if (FAILED(hr = m_pIBDA_DeviceControl->CommitChanges())) {
+			OutputDebug(L"  Fail to CommitChanges. ret=0x%08lx\n", hr);
+		}
+		else {
+			OutputDebug(L"  Succeeded to CommitChanges.\n");
+		}
+	}
 
 	// トランザクション開始通知
 	if (FAILED(hr = m_pIBDA_DeviceControl->StartChanges())) {
 		OutputDebug(L"LockChannel: Fail to IBDA_DeviceControl::StartChanges() function. ret=0x%08lx\n", hr);
 		return E_FAIL;
-	}
-
-	if (m_pIBDA_LNBInfo) {
-		OutputDebug(L"LockChannel: IBDA_LNBInfo\n");
-		// LNB 周波数を設定
-		if (pTuningParm->Antenna->HighOscillator != -1) {
-			m_pIBDA_LNBInfo->put_LocalOscilatorFrequencyHighBand(pTuningParm->Antenna->HighOscillator);
-		}
-		if (pTuningParm->Antenna->LowOscillator != -1) {
-			m_pIBDA_LNBInfo->put_LocalOscilatorFrequencyLowBand(pTuningParm->Antenna->LowOscillator);
-		}
-
-		// LNBスイッチの周波数を設定
-		if (pTuningParm->Antenna->LNBSwitch != -1) {
-			// LNBSwitch周波数の設定がされている
-			m_pIBDA_LNBInfo->put_HighLowSwitchFrequency(pTuningParm->Antenna->LNBSwitch);
-		}
-		else {
-			// 10GHzを設定しておけばHigh側に、20GHzを設定しておけばLow側に切替わるはず
-			m_pIBDA_LNBInfo->put_HighLowSwitchFrequency((pTuningParm->Antenna->Tone != 0) ? 10000000 : 20000000);
-		}
-	}
-
-	if (m_pIBDA_DigitalDemodulator) {
-		OutputDebug(L"LockChannel: IBDA_DigitalDemodulator\n");
-		// 位相変調スペクトル反転の種類
-		SpectralInversion eSpectralInversion = BDA_SPECTRAL_INVERSION_AUTOMATIC;
-		m_pIBDA_DigitalDemodulator->put_SpectralInversion(&eSpectralInversion);
-
-		// 内部前方誤り訂正のタイプを設定
-		FECMethod eInnerFECMethod = pTuningParm->Modulation->InnerFEC;
-		m_pIBDA_DigitalDemodulator->put_InnerFECMethod(&eInnerFECMethod);
-
-		// 内部 FEC レートを設定
-		BinaryConvolutionCodeRate eInnerFECRate = pTuningParm->Modulation->InnerFECRate;
-		m_pIBDA_DigitalDemodulator->put_InnerFECRate(&eInnerFECRate);
-
-		// 変調タイプを設定
-		ModulationType eModulationType = pTuningParm->Modulation->Modulation;
-		m_pIBDA_DigitalDemodulator->put_ModulationType(&eModulationType);
-
-		// 外部前方誤り訂正のタイプを設定
-		FECMethod eOuterFECMethod = pTuningParm->Modulation->OuterFEC;
-		m_pIBDA_DigitalDemodulator->put_OuterFECMethod(&eOuterFECMethod);
-
-		// 外部 FEC レートを設定
-		BinaryConvolutionCodeRate eOuterFECRate = pTuningParm->Modulation->OuterFECRate;
-		m_pIBDA_DigitalDemodulator->put_OuterFECRate(&eOuterFECRate);
-
-		// QPSK シンボル レートを設定
-		ULONG SymbolRate = (ULONG)pTuningParm->Modulation->SymbolRate;
-		m_pIBDA_DigitalDemodulator->put_SymbolRate(&SymbolRate);
-	}
-
-	if (m_pIBDA_FrequencyFilter) {
-		OutputDebug(L"LockChannel: IBDA_FrequencyFilter\n");
-		// RF 信号の周波数を設定
-		m_pIBDA_FrequencyFilter->put_Frequency((ULONG)pTuningParm->Frequency);
-
-		// 信号の偏波を設定
-		m_pIBDA_FrequencyFilter->put_Polarity(pTuningParm->Polarisation);
-
-		// 周波数の帯域幅 (MHz)を設定
-		if (pTuningParm->Modulation->BandWidth != -1) {
-			m_pIBDA_FrequencyFilter->put_Bandwidth((ULONG)pTuningParm->Modulation->BandWidth);
-		}
 	}
 
 	// 信号規格（ISDB-T/ISDB-S等）をセット
@@ -337,17 +310,99 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParm)
 		}
 	}
 
+	// IBDA_DiseqCommand
+	if (m_pIBDA_DiseqCommand) {
+		// DiseqLNBSourceを設定
+		if (pTuningParm->Antenna->DiSEqC == -1L || pTuningParm->Antenna->DiSEqC == 0L) {
+			m_pIBDA_DiseqCommand->put_DiseqLNBSource((ULONG)BDA_LNB_SOURCE_NOT_SET);
+		}
+		else {
+			m_pIBDA_DiseqCommand->put_DiseqLNBSource((ULONG)pTuningParm->Antenna->DiSEqC);
+		}
+	}
+
+	// IBDA_LNBInfo
+	if (m_pIBDA_LNBInfo) {
+		// LNB 周波数を設定
+		if (pTuningParm->Antenna->HighOscillator != -1L) {
+			m_pIBDA_LNBInfo->put_LocalOscilatorFrequencyHighBand((ULONG)pTuningParm->Antenna->HighOscillator);
+		}
+		if (pTuningParm->Antenna->LowOscillator != -1L) {
+			m_pIBDA_LNBInfo->put_LocalOscilatorFrequencyLowBand((ULONG)pTuningParm->Antenna->LowOscillator);
+		}
+
+		// LNBスイッチの周波数を設定
+		if (pTuningParm->Antenna->LNBSwitch != -1L) {
+			// LNBSwitch周波数の設定がされている
+			m_pIBDA_LNBInfo->put_HighLowSwitchFrequency((ULONG)pTuningParm->Antenna->LNBSwitch);
+		}
+		else {
+			// 10GHzを設定しておけばHigh側に、20GHzを設定しておけばLow側に切替わるはず
+			m_pIBDA_LNBInfo->put_HighLowSwitchFrequency((pTuningParm->Antenna->Tone != 0L) ? 10000000UL : 20000000UL);
+		}
+	}
+
+	// IBDA_DigitalDemodulator
+	if (m_pIBDA_DigitalDemodulator) {
+		// 位相変調スペクトル反転の種類
+		eSpectralInversion = BDA_SPECTRAL_INVERSION_AUTOMATIC;
+		m_pIBDA_DigitalDemodulator->put_SpectralInversion(&eSpectralInversion);
+
+		// 内部前方誤り訂正のタイプを設定
+		eInnerFECMethod = pTuningParm->Modulation->InnerFEC;
+		m_pIBDA_DigitalDemodulator->put_InnerFECMethod(&eInnerFECMethod);
+
+		// 内部 FEC レートを設定
+		eInnerFECRate = pTuningParm->Modulation->InnerFECRate;
+		m_pIBDA_DigitalDemodulator->put_InnerFECRate(&eInnerFECRate);
+
+		// 変調タイプを設定
+		eModulationType = pTuningParm->Modulation->Modulation;
+		m_pIBDA_DigitalDemodulator->put_ModulationType(&eModulationType);
+
+		// 外部前方誤り訂正のタイプを設定
+		eOuterFECMethod = pTuningParm->Modulation->OuterFEC;
+		m_pIBDA_DigitalDemodulator->put_OuterFECMethod(&eOuterFECMethod);
+
+		// 外部 FEC レートを設定
+		eOuterFECRate = pTuningParm->Modulation->OuterFECRate;
+		m_pIBDA_DigitalDemodulator->put_OuterFECRate(&eOuterFECRate);
+
+		// シンボル レートを設定
+		SymbolRate = (ULONG)pTuningParm->Modulation->SymbolRate;
+		m_pIBDA_DigitalDemodulator->put_SymbolRate(&SymbolRate);
+	}
+
+	// IBDA_FrequencyFilter
+	if (m_pIBDA_FrequencyFilter) {
+		// 周波数の単位(Hz)を設定
+		m_pIBDA_FrequencyFilter->put_FrequencyMultiplier(1000UL);
+
+		// 信号の偏波を設定
+		m_pIBDA_FrequencyFilter->put_Polarity(pTuningParm->Polarisation);
+
+		// 周波数の帯域幅 (MHz)を設定
+		if (pTuningParm->Modulation->BandWidth != -1L) {
+			m_pIBDA_FrequencyFilter->put_Bandwidth((ULONG)pTuningParm->Modulation->BandWidth);
+		}
+
+		// RF 信号の周波数を設定
+		m_pIBDA_FrequencyFilter->put_Frequency((ULONG)pTuningParm->Frequency);
+	}
+
 	// TSID等をセット
 	{
 		SelectStream writeStream;
 		ULONG ss = m_TuningData.GetSignalStandard(pTuningParm->IniSpaceID);
+		BOOL needWrite = FALSE;
 		switch (ss) {
 		case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_ISDBC:
 			writeStream.ISDBC.TSID = m_bDisableTSMF ? 0xFFFFU : (USHORT)pTuningParm->TSID;
 			writeStream.ISDBC.ONID = m_bSelectStreamRelative ? 0U : (USHORT)pTuningParm->ONID;
+			needWrite = TRUE;
 			break;
 		case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_ISDBS:
-			if (pTuningParm->TSID == -1) {
+			if (pTuningParm->TSID == -1L) {
 				writeStream.ISDBS.TSID = 0U;
 				writeStream.ISDBS.Flag = 0U;
 			}
@@ -355,29 +410,29 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParm)
 				writeStream.ISDBS.TSID = (USHORT)pTuningParm->TSID;
 				writeStream.ISDBS.Flag = m_bSelectStreamRelative ? 0U : 1U;
 			}
+			needWrite = TRUE;
 			break;
 		case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_DVBS2:
-			writeStream.DVBS2.StreamID = (USHORT)pTuningParm->SID;
+			if (pTuningParm->SID != -1L) {
+				writeStream.DVBS2.StreamID = (USHORT)pTuningParm->SID;
+				needWrite = TRUE;
+			}
 			break;
 		}
-		switch (ss) {
-		case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_ISDBC:
-		case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_ISDBS:
-		case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_DVBS2:
+		if (needWrite) {
 			KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S PropStream(KSPROPERTY_DD_BDA_SELECT_STREAM, KSPROPERTY_TYPE_SET);
 			OutputDebug(L"LockChannel: trying to set SelectStream. val=0x%08lx.\n", writeStream.alignment);
 			if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStream, sizeof(PropStream), &writeStream, sizeof(writeStream), NULL))) {
 				OutputDebug(L"LockChannel: Fail to IKsControl::KsProperty() KSPROPERTY_TYPE_SET SelectStream function. ret=0x%08lx\n", hr);
 				return E_FAIL;
 			}
-			break;
 		}
 	}
 
 	// トランザクションのコミット
 	if (FAILED(hr = m_pIBDA_DeviceControl->CommitChanges())) {
 		OutputDebug(L"LockChannel: Fail to IBDA_DeviceControl::CommitChanges() function. ret=0x%08lx\n", hr);
-		// 全ての変更を取り消す
+		// 失敗したら全ての変更を取り消す
 		hr = m_pIBDA_DeviceControl->StartChanges();
 		hr = m_pIBDA_DeviceControl->CommitChanges();
 		return E_FAIL;
@@ -409,12 +464,8 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParm)
 		OutputDebug(L"LockChannel: Succeeded to IKsControl::KsProperty() KSPROPERTY_TYPE_GET SelectStream function. bytes=%ld, val=0x%08lx\n", BytesReturned, val);
 	}
 
-	if (!m_pIBDA_SignalStatistics) {
-		// 確認できないのでそのままS_OKを返す
-		return S_OK;
-	}
-
 	BOOLEAN locked = 0;
+	// 実際のチューニングはここで行われる
 	hr = m_pIBDA_SignalStatistics->get_SignalLocked(&locked);
 
 	return locked ? S_OK : E_FAIL;

@@ -168,6 +168,7 @@ private:
 	CComPtr<IBDA_LNBInfo> m_pIBDA_LNBInfo;
 	CComPtr<IBDA_DigitalDemodulator> m_pIBDA_DigitalDemodulator;
 	CComPtr<IBDA_FrequencyFilter> m_pIBDA_FrequencyFilter;
+	CComPtr<IBDA_DiseqCommand> m_pIBDA_DiseqCommand;
 	CComPtr<IBDA_SignalStatistics> m_pIBDA_SignalStatistics;
 	CComPtr<IBaseFilter> m_pTunerDevice;
 
