@@ -7,7 +7,6 @@
 
 #include <dshow.h>
 #include "CIniFileAccess.h"
-#include "WaitWithMsg.h"
 
 FILE *g_fpLog = NULL;
 

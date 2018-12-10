@@ -47,9 +47,6 @@
     <ClInclude Include="..\..\common\CIniFileAccess.h">
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\common\WaitWithMsg.h">
-      <Filter>ヘッダー ファイル</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Text Include="..\..\doc\Readme-DD.txt">
