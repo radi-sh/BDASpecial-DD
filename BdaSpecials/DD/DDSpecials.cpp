@@ -313,9 +313,11 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParm)
 	if (m_pIBDA_DiseqCommand) {
 		// DiseqLNBSource‚ðÝ’è
 		if (pTuningParm->Antenna->DiSEqC == -1L || pTuningParm->Antenna->DiSEqC == 0L) {
+			m_pIBDA_DiseqCommand->put_EnableDiseqCommands(FALSE);
 			m_pIBDA_DiseqCommand->put_DiseqLNBSource((ULONG)BDA_LNB_SOURCE_NOT_SET);
 		}
 		else {
+			m_pIBDA_DiseqCommand->put_EnableDiseqCommands(TRUE);
 			m_pIBDA_DiseqCommand->put_DiseqLNBSource((ULONG)pTuningParm->Antenna->DiSEqC);
 		}
 	}
