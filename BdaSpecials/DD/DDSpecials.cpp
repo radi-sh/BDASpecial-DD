@@ -325,12 +325,8 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParm)
 	// IBDA_LNBInfo
 	if (m_pIBDA_LNBInfo) {
 		// LNB Žü”g”‚ðÝ’è
-		if (pTuningParm->Antenna->HighOscillator != -1L) {
-			m_pIBDA_LNBInfo->put_LocalOscilatorFrequencyHighBand((ULONG)pTuningParm->Antenna->HighOscillator);
-		}
-		if (pTuningParm->Antenna->LowOscillator != -1L) {
-			m_pIBDA_LNBInfo->put_LocalOscilatorFrequencyLowBand((ULONG)pTuningParm->Antenna->LowOscillator);
-		}
+		m_pIBDA_LNBInfo->put_LocalOscilatorFrequencyHighBand((ULONG)pTuningParm->Antenna->HighOscillator);
+		m_pIBDA_LNBInfo->put_LocalOscilatorFrequencyLowBand((ULONG)pTuningParm->Antenna->LowOscillator);
 
 		// LNBƒXƒCƒbƒ`‚ÌŽü”g”‚ðÝ’è
 		if (pTuningParm->Antenna->LNBSwitch != -1L) {
@@ -383,9 +379,7 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParm)
 		m_pIBDA_FrequencyFilter->put_Polarity(pTuningParm->Polarisation);
 
 		// Žü”g”‚Ì‘Ñˆæ• (MHz)‚ðÝ’è
-		if (pTuningParm->Modulation->BandWidth != -1L) {
-			m_pIBDA_FrequencyFilter->put_Bandwidth((ULONG)pTuningParm->Modulation->BandWidth);
-		}
+		m_pIBDA_FrequencyFilter->put_Bandwidth((ULONG)pTuningParm->Modulation->BandWidth);
 
 		// RF M†‚ÌŽü”g”‚ðÝ’è
 		m_pIBDA_FrequencyFilter->put_Frequency((ULONG)pTuningParm->Frequency);
