@@ -224,5 +224,6 @@ private:
 
 	BOOL m_bSelectStreamRelative;
 	BOOL m_bDisableTSMF;
+	BOOL m_bLNBPowerOff;
 	KSPROPERTY_DD_BDA_SIGNAL_INFO m_nGetSignalStrengthFunction;
 };

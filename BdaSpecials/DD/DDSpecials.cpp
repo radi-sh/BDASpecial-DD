@@ -376,7 +376,7 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParm)
 		m_pIBDA_FrequencyFilter->put_FrequencyMultiplier(1000UL);
 
 		// M†‚Ì•Î”g‚ğİ’è
-		m_pIBDA_FrequencyFilter->put_Polarity(pTuningParm->Polarisation);
+		m_pIBDA_FrequencyFilter->put_Polarity(m_bLNBPowerOff ? (Polarisation)0L : pTuningParm->Polarisation);
 
 		// ü”g”‚Ì‘Ñˆæ• (MHz)‚ğİ’è
 		m_pIBDA_FrequencyFilter->put_Bandwidth((ULONG)pTuningParm->Modulation->BandWidth);
@@ -511,6 +511,9 @@ const HRESULT CDDSpecials::ReadIniFile(const WCHAR *szIniFilePath)
 
 	// Select Stream ˆ—‚ÅTSMF‚ğ–³Œø‚É‚·‚é
 	m_bDisableTSMF = IniFileAccess.ReadKeyB(L"DisableTSMF", FALSE);
+
+	// LNB Power‚ğ‹­§“I‚ÉOFF‚É‚·‚é
+	m_bLNBPowerOff = IniFileAccess.ReadKeyB(L"LNBPowerOff", FALSE);
 
 	// GetSignalStrength ŠÖ”‚Å•Ô‚·’l
 	m_nGetSignalStrengthFunction = (KSPROPERTY_DD_BDA_SIGNAL_INFO)IniFileAccess.ReadKeyIValueMap(L"GetSignalStrengthFunction", -1, mapGetSignalStrengthFunction);
