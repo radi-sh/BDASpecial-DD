@@ -473,7 +473,7 @@ const HRESULT CDDSpecials::SetLNBPower(bool bActive)
 
 const HRESULT CDDSpecials::ReadIniFile(const WCHAR *szIniFilePath)
 {
-	static const std::map<const std::wstring, const int> mapSignalStandard = {
+	static const std::map<const std::wstring, const int, std::less<>> mapSignalStandard = {
 		{ L"",        DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_UNDEFINED },
 		{ L"DVB-T",   DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_DVBT },
 		{ L"DVB-T2",  DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_DVBT2 },
@@ -490,7 +490,7 @@ const HRESULT CDDSpecials::ReadIniFile(const WCHAR *szIniFilePath)
 		{ L"J.83B",   DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_J83B },
 	};
 
-	static const std::map<const std::wstring, const int> mapGetSignalStrengthFunction = {
+	static const std::map<const std::wstring, const int, std::less<>> mapGetSignalStrengthFunction = {
 		{ L"",        -1 },
 		{ L"SIGNALSTRENGTH", KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_STRENGTH },
 		{ L"SIGNALQUALITY",  KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_QUALITY },
