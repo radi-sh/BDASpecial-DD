@@ -275,26 +275,28 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParam)
 	BinaryConvolutionCodeRate eOuterFECRate = BDA_BCC_RATE_NOT_SET;
 	ULONG SymbolRate = (ULONG)-1L;
 
+	OutputDebug(L"LockChannel: Start.\n");
+
 	ULONG State;
 	if (FAILED(hr = m_pIBDA_DeviceControl->GetChangeState(&State))) {
-		OutputDebug(L"LockChannel: Fail to IBDA_DeviceControl::GetChangeState() function. ret=0x%08lx\n", hr);
+		OutputDebug(L"  Fail to IBDA_DeviceControl::GetChangeState() function. ret=0x%08lx\n", hr);
 		return E_FAIL;
 	}
 	// ペンディング状態のトランザクションがあるか確認
 	if (State == BDA_CHANGES_PENDING) {
-		OutputDebug(L"LockChannel: Some changes are pending. Trying CommitChanges.\n");
+		OutputDebug(L"  Some changes are pending. Trying CommitChanges.\n");
 		// トランザクションのコミット
 		if (FAILED(hr = m_pIBDA_DeviceControl->CommitChanges())) {
-			OutputDebug(L"  Fail to CommitChanges. ret=0x%08lx\n", hr);
+			OutputDebug(L"    Fail to CommitChanges. ret=0x%08lx\n", hr);
 		}
 		else {
-			OutputDebug(L"  Succeeded to CommitChanges.\n");
+			OutputDebug(L"    Succeeded to CommitChanges.\n");
 		}
 	}
 
 	// トランザクション開始通知
 	if (FAILED(hr = m_pIBDA_DeviceControl->StartChanges())) {
-		OutputDebug(L"LockChannel: Fail to IBDA_DeviceControl::StartChanges() function. ret=0x%08lx\n", hr);
+		OutputDebug(L"  Fail to IBDA_DeviceControl::StartChanges() function. ret=0x%08lx\n", hr);
 		return E_FAIL;
 	}
 
@@ -302,9 +304,9 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParam)
 	{
 		KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S PropStandard(KSPROPERTY_DD_BDA_SELECT_STANDARD, KSPROPERTY_TYPE_SET);
 		ULONG val = m_TuningData.GetSignalStandard(pTuningParam->IniSpaceID);
-		OutputDebug(L"LockChannel: trying to set SelectStandard. val=%ld.\n", val);
+		OutputDebug(L"  Trying to set SelectStandard. val=%ld.\n", val);
 		if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStandard, sizeof(PropStandard), &val, sizeof(val), NULL))) {
-			OutputDebug(L"LockChannel: Fail to IKsControl::KsProperty() KSPROPERTY_TYPE_SET SelectStandard function. ret=0x%08lx\n", hr);
+			OutputDebug(L"  Fail to IKsControl::KsProperty() KSPROPERTY_TYPE_SET SelectStandard function. ret=0x%08lx\n", hr);
 			return E_FAIL;
 		}
 	}
@@ -416,9 +418,9 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParam)
 		}
 		if (needWrite) {
 			KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S PropStream(KSPROPERTY_DD_BDA_SELECT_STREAM, KSPROPERTY_TYPE_SET);
-			OutputDebug(L"LockChannel: trying to set SelectStream. val=0x%08lx.\n", writeStream.alignment);
+			OutputDebug(L"  Trying to set SelectStream. val=0x%08lx.\n", writeStream.alignment);
 			if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStream, sizeof(PropStream), &writeStream, sizeof(writeStream), NULL))) {
-				OutputDebug(L"LockChannel: Fail to IKsControl::KsProperty() KSPROPERTY_TYPE_SET SelectStream function. ret=0x%08lx\n", hr);
+				OutputDebug(L"  Fail to IKsControl::KsProperty() KSPROPERTY_TYPE_SET SelectStream function. ret=0x%08lx\n", hr);
 				return E_FAIL;
 			}
 		}
@@ -426,42 +428,20 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParam)
 
 	// トランザクションのコミット
 	if (FAILED(hr = m_pIBDA_DeviceControl->CommitChanges())) {
-		OutputDebug(L"LockChannel: Fail to IBDA_DeviceControl::CommitChanges() function. ret=0x%08lx\n", hr);
+		OutputDebug(L"  Fail to IBDA_DeviceControl::CommitChanges() function. ret=0x%08lx\n", hr);
 		// 失敗したら全ての変更を取り消す
 		hr = m_pIBDA_DeviceControl->StartChanges();
 		hr = m_pIBDA_DeviceControl->CommitChanges();
 		return E_FAIL;
 	}
-	OutputDebug(L"LockChannel: Succeeded to IBDA_DeviceControl::CommitChanges() function.\n");
-
-	// 信号規格（ISDB-T/ISDB-S等）の確認（Logのみ）
-	{
-		KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S PropStandard(KSPROPERTY_DD_BDA_SELECT_STANDARD, KSPROPERTY_TYPE_GET);
-		ULONG val = 0;
-		ULONG BytesReturned = 0;
-		PropStandard.SetFlags(KSPROPERTY_TYPE_GET);
-		if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStandard, sizeof(PropStandard), &val, sizeof(val), &BytesReturned))) {
-			OutputDebug(L"LockChannel: Fail to IKsControl::KsProperty() KSPROPERTY_TYPE_GET SelectStandard function. ret=0x%08lx\n", hr);
-			return E_FAIL;
-		}
-		OutputDebug(L"LockChannel: Succeeded to IKsControl::KsProperty() KSPROPERTY_TYPE_GET SelectStandard function. bytes=%ld, val=%ld\n", BytesReturned, val);
-	}
-
-	// TSID等の確認（Logのみ）
-	{
-		KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S PropStream(KSPROPERTY_DD_BDA_SELECT_STREAM, KSPROPERTY_TYPE_GET);
-		ULONG val = 0;
-		ULONG BytesReturned = 0;
-		if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStream, sizeof(PropStream), &val, sizeof(val), &BytesReturned))) {
-			OutputDebug(L"LockChannel: Fail to IKsControl::KsProperty() KSPROPERTY_TYPE_GET SelectStream function. ret=0x%08lx\n", hr);
-			return E_FAIL;
-		}
-		OutputDebug(L"LockChannel: Succeeded to IKsControl::KsProperty() KSPROPERTY_TYPE_GET SelectStream function. bytes=%ld, val=0x%08lx\n", BytesReturned, val);
-	}
+	OutputDebug(L"  Succeeded to IBDA_DeviceControl::CommitChanges() function.\n");
 
 	BOOLEAN locked = 0;
 	// 実際のチューニングはここで行われる
 	hr = m_pIBDA_SignalStatistics->get_SignalLocked(&locked);
+	OutputDebug(L"  SignalLocked=%d.\n", locked);
+
+	OutputDebug(L"LockChannel: Complete.\n");
 
 	return locked ? S_OK : E_FAIL;
 }
@@ -613,6 +593,41 @@ const HRESULT CDDSpecials::PreTuneRequest(const TuningParam *pTuningParam, ITune
 
 const HRESULT CDDSpecials::PostLockChannel(const TuningParam *pTuningParam)
 {
+	if (m_pTunerDevice == NULL) {
+		return E_POINTER;
+	}
+
+	HRESULT hr;
+
+	OutputDebug(L"PostLockChannel: Start.\n");
+
+	// 信号規格（ISDB-T/ISDB-S等）の確認（Logのみ）
+	{
+		KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S PropStandard(KSPROPERTY_DD_BDA_SELECT_STANDARD, KSPROPERTY_TYPE_GET);
+		ULONG val = 0;
+		ULONG BytesReturned = 0;
+		PropStandard.SetFlags(KSPROPERTY_TYPE_GET);
+		if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStandard, sizeof(PropStandard), &val, sizeof(val), &BytesReturned))) {
+			OutputDebug(L"  Fail to IKsControl::KsProperty() KSPROPERTY_TYPE_GET SelectStandard function. ret=0x%08lx\n", hr);
+			return E_FAIL;
+		}
+		OutputDebug(L"  Succeeded to IKsControl::KsProperty() KSPROPERTY_TYPE_GET SelectStandard function. bytes=%ld, val=%ld\n", BytesReturned, val);
+	}
+
+	// TSID等の確認（Logのみ）
+	{
+		KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S PropStream(KSPROPERTY_DD_BDA_SELECT_STREAM, KSPROPERTY_TYPE_GET);
+		ULONG val = 0;
+		ULONG BytesReturned = 0;
+		if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStream, sizeof(PropStream), &val, sizeof(val), &BytesReturned))) {
+			OutputDebug(L"  Fail to IKsControl::KsProperty() KSPROPERTY_TYPE_GET SelectStream function. ret=0x%08lx\n", hr);
+			return E_FAIL;
+		}
+		OutputDebug(L"  Succeeded to IKsControl::KsProperty() KSPROPERTY_TYPE_GET SelectStream function. bytes=%ld, val=0x%08lx\n", BytesReturned, val);
+	}
+
+	OutputDebug(L"PostLockChannel: Complete.\n");
+
 	return S_OK;
 }
 
