@@ -256,7 +256,7 @@ const HRESULT CDDSpecials::LockChannel(BYTE bySatellite, BOOL bHorizontal, unsig
 	return E_NOINTERFACE;
 }
 
-const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParm)
+const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParam)
 {
 	if (m_pTunerDevice == NULL) {
 		return E_POINTER;
@@ -301,7 +301,7 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParm)
 	// 信号規格（ISDB-T/ISDB-S等）をセット
 	{
 		KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR_S PropStandard(KSPROPERTY_DD_BDA_SELECT_STANDARD, KSPROPERTY_TYPE_SET);
-		ULONG val = m_TuningData.GetSignalStandard(pTuningParm->IniSpaceID);
+		ULONG val = m_TuningData.GetSignalStandard(pTuningParam->IniSpaceID);
 		OutputDebug(L"LockChannel: trying to set SelectStandard. val=%ld.\n", val);
 		if (FAILED(hr = m_pControlTunerOutputPin->KsProperty((PKSPROPERTY)&PropStandard, sizeof(PropStandard), &val, sizeof(val), NULL))) {
 			OutputDebug(L"LockChannel: Fail to IKsControl::KsProperty() KSPROPERTY_TYPE_SET SelectStandard function. ret=0x%08lx\n", hr);
@@ -312,30 +312,30 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParm)
 	// IBDA_DiseqCommand
 	if (m_pIBDA_DiseqCommand) {
 		// DiseqLNBSourceを設定
-		if (pTuningParm->Antenna->DiSEqC == -1L || pTuningParm->Antenna->DiSEqC == 0L) {
+		if (pTuningParam->Antenna->DiSEqC == -1L || pTuningParam->Antenna->DiSEqC == 0L) {
 			m_pIBDA_DiseqCommand->put_EnableDiseqCommands(FALSE);
 			m_pIBDA_DiseqCommand->put_DiseqLNBSource((ULONG)BDA_LNB_SOURCE_NOT_SET);
 		}
 		else {
 			m_pIBDA_DiseqCommand->put_EnableDiseqCommands(TRUE);
-			m_pIBDA_DiseqCommand->put_DiseqLNBSource((ULONG)pTuningParm->Antenna->DiSEqC);
+			m_pIBDA_DiseqCommand->put_DiseqLNBSource((ULONG)pTuningParam->Antenna->DiSEqC);
 		}
 	}
 
 	// IBDA_LNBInfo
 	if (m_pIBDA_LNBInfo) {
 		// LNB 周波数を設定
-		m_pIBDA_LNBInfo->put_LocalOscilatorFrequencyHighBand((ULONG)pTuningParm->Antenna->HighOscillator);
-		m_pIBDA_LNBInfo->put_LocalOscilatorFrequencyLowBand((ULONG)pTuningParm->Antenna->LowOscillator);
+		m_pIBDA_LNBInfo->put_LocalOscilatorFrequencyHighBand((ULONG)pTuningParam->Antenna->HighOscillator);
+		m_pIBDA_LNBInfo->put_LocalOscilatorFrequencyLowBand((ULONG)pTuningParam->Antenna->LowOscillator);
 
 		// LNBスイッチの周波数を設定
-		if (pTuningParm->Antenna->LNBSwitch != -1L) {
+		if (pTuningParam->Antenna->LNBSwitch != -1L) {
 			// LNBSwitch周波数の設定がされている
-			m_pIBDA_LNBInfo->put_HighLowSwitchFrequency((ULONG)pTuningParm->Antenna->LNBSwitch);
+			m_pIBDA_LNBInfo->put_HighLowSwitchFrequency((ULONG)pTuningParam->Antenna->LNBSwitch);
 		}
 		else {
 			// 10GHzを設定しておけばHigh側に、20GHzを設定しておけばLow側に切替わるはず
-			m_pIBDA_LNBInfo->put_HighLowSwitchFrequency((pTuningParm->Antenna->Tone != 0L) ? 10000000UL : 20000000UL);
+			m_pIBDA_LNBInfo->put_HighLowSwitchFrequency((pTuningParam->Antenna->Tone != 0L) ? 10000000UL : 20000000UL);
 		}
 	}
 
@@ -346,27 +346,27 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParm)
 		m_pIBDA_DigitalDemodulator->put_SpectralInversion(&eSpectralInversion);
 
 		// 内部前方誤り訂正のタイプを設定
-		eInnerFECMethod = pTuningParm->Modulation->InnerFEC;
+		eInnerFECMethod = pTuningParam->Modulation->InnerFEC;
 		m_pIBDA_DigitalDemodulator->put_InnerFECMethod(&eInnerFECMethod);
 
 		// 内部 FEC レートを設定
-		eInnerFECRate = pTuningParm->Modulation->InnerFECRate;
+		eInnerFECRate = pTuningParam->Modulation->InnerFECRate;
 		m_pIBDA_DigitalDemodulator->put_InnerFECRate(&eInnerFECRate);
 
 		// 変調タイプを設定
-		eModulationType = pTuningParm->Modulation->Modulation;
+		eModulationType = pTuningParam->Modulation->Modulation;
 		m_pIBDA_DigitalDemodulator->put_ModulationType(&eModulationType);
 
 		// 外部前方誤り訂正のタイプを設定
-		eOuterFECMethod = pTuningParm->Modulation->OuterFEC;
+		eOuterFECMethod = pTuningParam->Modulation->OuterFEC;
 		m_pIBDA_DigitalDemodulator->put_OuterFECMethod(&eOuterFECMethod);
 
 		// 外部 FEC レートを設定
-		eOuterFECRate = pTuningParm->Modulation->OuterFECRate;
+		eOuterFECRate = pTuningParam->Modulation->OuterFECRate;
 		m_pIBDA_DigitalDemodulator->put_OuterFECRate(&eOuterFECRate);
 
 		// シンボル レートを設定
-		SymbolRate = (ULONG)pTuningParm->Modulation->SymbolRate;
+		SymbolRate = (ULONG)pTuningParam->Modulation->SymbolRate;
 		m_pIBDA_DigitalDemodulator->put_SymbolRate(&SymbolRate);
 	}
 
@@ -376,40 +376,40 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParm)
 		m_pIBDA_FrequencyFilter->put_FrequencyMultiplier(1000UL);
 
 		// 信号の偏波を設定
-		m_pIBDA_FrequencyFilter->put_Polarity(m_bLNBPowerOff ? (Polarisation)0L : pTuningParm->Polarisation);
+		m_pIBDA_FrequencyFilter->put_Polarity(m_bLNBPowerOff ? (Polarisation)0L : pTuningParam->Polarisation);
 
 		// 周波数の帯域幅 (MHz)を設定
-		m_pIBDA_FrequencyFilter->put_Bandwidth((ULONG)pTuningParm->Modulation->BandWidth);
+		m_pIBDA_FrequencyFilter->put_Bandwidth((ULONG)pTuningParam->Modulation->BandWidth);
 
 		// RF 信号の周波数を設定
-		m_pIBDA_FrequencyFilter->put_Frequency((ULONG)pTuningParm->Frequency);
+		m_pIBDA_FrequencyFilter->put_Frequency((ULONG)pTuningParam->Frequency);
 	}
 
 	// TSID等をセット
 	{
 		SelectStream writeStream;
-		ULONG ss = m_TuningData.GetSignalStandard(pTuningParm->IniSpaceID);
+		ULONG ss = m_TuningData.GetSignalStandard(pTuningParam->IniSpaceID);
 		BOOL needWrite = FALSE;
 		switch (ss) {
 		case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_ISDBC:
-			writeStream.ISDBC.TSID = m_bDisableTSMF ? 0xFFFFU : (USHORT)pTuningParm->TSID;
-			writeStream.ISDBC.ONID = m_bSelectStreamRelative ? 0U : (USHORT)pTuningParm->ONID;
+			writeStream.ISDBC.TSID = m_bDisableTSMF ? 0xFFFFU : (USHORT)pTuningParam->TSID;
+			writeStream.ISDBC.ONID = m_bSelectStreamRelative ? 0U : (USHORT)pTuningParam->ONID;
 			needWrite = TRUE;
 			break;
 		case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_ISDBS:
-			if (pTuningParm->TSID == -1L) {
+			if (pTuningParam->TSID == -1L) {
 				writeStream.ISDBS.TSID = 0U;
 				writeStream.ISDBS.Flag = 0U;
 			}
 			else {
-				writeStream.ISDBS.TSID = (USHORT)pTuningParm->TSID;
+				writeStream.ISDBS.TSID = (USHORT)pTuningParam->TSID;
 				writeStream.ISDBS.Flag = m_bSelectStreamRelative ? 0U : 1U;
 			}
 			needWrite = TRUE;
 			break;
 		case DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_DVBS2:
-			if (pTuningParm->SID != -1L) {
-				writeStream.DVBS2.StreamID = (USHORT)pTuningParm->SID;
+			if (pTuningParam->SID != -1L) {
+				writeStream.DVBS2.StreamID = (USHORT)pTuningParam->SID;
 				needWrite = TRUE;
 			}
 			break;
@@ -601,14 +601,19 @@ const HRESULT CDDSpecials::GetSignalStrength(float *fVal)
 	return S_OK;
 }
 
-const HRESULT CDDSpecials::PreTuneRequest(const TuningParam *pTuningParm, ITuneRequest *pITuneRequest)
+const HRESULT CDDSpecials::PreLockChannel(const TuningParam *pTuningParam)
 {
-	return E_NOINTERFACE;
+	return S_OK;
 }
 
-const HRESULT CDDSpecials::PostLockChannel(const TuningParam *pTuningParm)
+const HRESULT CDDSpecials::PreTuneRequest(const TuningParam *pTuningParam, ITuneRequest *pITuneRequest)
 {
-	return E_NOINTERFACE;
+	return S_OK;
+}
+
+const HRESULT CDDSpecials::PostLockChannel(const TuningParam *pTuningParam)
+{
+	return S_OK;
 }
 
 void CDDSpecials::Release(void)
