@@ -121,7 +121,7 @@ private:
 		KSPROPERTY_DD_BDA_SIGNAL_OFFSET,		// LONG  ( frequency offset , returns 0 if not supported )
 		KSPROPERTY_DD_BDA_SIGNAL_LOSTCOUNT,		// ULONG ( signal lost count )
 		KSPROPERTY_DD_BDA_SIGNAL_QUALITY,		// LONG  ( Quality as defined by Nordig 2.4)
-		KSPROPERTY_DD_BDA_SIGNAL_STRENGTH,		// LONG  ( dBµV * 10 )
+		KSPROPERTY_DD_BDA_SIGNAL_STRENGTH,		// LONG  ( dBuV * 10 )
 		KSPROPERTY_DD_BDA_SIGNAL_STANDARD,		// ULONG ( see enumeration below )
 		KSPROPERTY_DD_BDA_SIGNAL_SYMBOLRATE,	// ULONG ( current symbolrate, returns 0 if not supported )
 	};
