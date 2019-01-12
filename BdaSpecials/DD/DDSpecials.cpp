@@ -322,6 +322,8 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParam)
 			m_pIBDA_DiseqCommand->put_EnableDiseqCommands(TRUE);
 			m_pIBDA_DiseqCommand->put_DiseqLNBSource((ULONG)pTuningParam->Antenna->DiSEqC);
 		}
+		m_pIBDA_DiseqCommand->put_DiseqUseToneBurst(FALSE);
+		m_pIBDA_DiseqCommand->put_DiseqRepeats(0UL);
 	}
 
 	// IBDA_LNBInfo
