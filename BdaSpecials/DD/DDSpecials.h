@@ -187,7 +187,7 @@ private:
 	};
 
 	struct TuningData {
-		std::map<unsigned int, TuningSpaceData*> Spaces;	// チューニングスペース番号とチューニングスペース毎のデータ
+		std::map<unsigned int, TuningSpaceData> Spaces;		// チューニングスペース番号とチューニングスペース毎のデータ
 		DWORD dwNumSpace;									// チューニングスペース数
 		TuningData(void)
 			: dwNumSpace(0)
@@ -196,29 +196,25 @@ private:
 
 		~TuningData(void)
 		{
-			for (auto it = Spaces.begin(); it != Spaces.end(); it++) {
-				SAFE_DELETE(it->second);
-			}
 			Spaces.clear();
 		}
 
 		void Regist(unsigned int space, DD_SIGNAL_STANDARD signalStandard)
 		{
-			std::map<unsigned int, TuningSpaceData*>::iterator itSpace = Spaces.find(space);
+			auto itSpace = Spaces.find(space);
 			if (itSpace == Spaces.end()) {
-				TuningSpaceData *tuningSpaceData = new TuningSpaceData();
-				itSpace = Spaces.insert(Spaces.end(), std::pair<unsigned int, TuningSpaceData*>(space, tuningSpaceData));
+				itSpace = Spaces.emplace(space, TuningSpaceData()).first;
 			}
-			itSpace->second->SignalStandard = signalStandard;
+			itSpace->second.SignalStandard = signalStandard;
 		}
 
 		DD_SIGNAL_STANDARD GetSignalStandard(unsigned int space)
 		{
-			std::map<unsigned int, TuningSpaceData*>::iterator itSpace = Spaces.find(space);
+			auto itSpace = Spaces.find(space);
 			if (itSpace == Spaces.end()) {
 				return DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_UNDEFINED;
 			}
-			return itSpace->second->SignalStandard;
+			return itSpace->second.SignalStandard;
 		}
 	};
 	TuningData m_TuningData;
