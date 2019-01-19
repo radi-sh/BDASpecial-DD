@@ -6,7 +6,7 @@
 #include <Ks.h>
 #include <ksproxy.h>
 
-class CDDSpecials : public IBdaSpecials2b1
+class CDDSpecials : public IBdaSpecials2b2
 {
 public:
 	CDDSpecials(HMODULE hMySelf, CComPtr<IBaseFilter> pTunerDevice);

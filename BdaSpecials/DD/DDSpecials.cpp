@@ -314,13 +314,13 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParam)
 	// IBDA_DiseqCommand
 	if (m_pIBDA_DiseqCommand) {
 		// DiseqLNBSourceを設定
-		if (pTuningParam->Antenna->DiSEqC == -1L || pTuningParam->Antenna->DiSEqC == 0L) {
+		if (pTuningParam->Antenna.DiSEqC == -1L || pTuningParam->Antenna.DiSEqC == 0L) {
 			m_pIBDA_DiseqCommand->put_EnableDiseqCommands(FALSE);
 			m_pIBDA_DiseqCommand->put_DiseqLNBSource((ULONG)BDA_LNB_SOURCE_NOT_SET);
 		}
 		else {
 			m_pIBDA_DiseqCommand->put_EnableDiseqCommands(TRUE);
-			m_pIBDA_DiseqCommand->put_DiseqLNBSource((ULONG)pTuningParam->Antenna->DiSEqC);
+			m_pIBDA_DiseqCommand->put_DiseqLNBSource((ULONG)pTuningParam->Antenna.DiSEqC);
 		}
 		m_pIBDA_DiseqCommand->put_DiseqUseToneBurst(FALSE);
 		m_pIBDA_DiseqCommand->put_DiseqRepeats(0UL);
@@ -329,17 +329,17 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParam)
 	// IBDA_LNBInfo
 	if (m_pIBDA_LNBInfo) {
 		// LNB 周波数を設定
-		m_pIBDA_LNBInfo->put_LocalOscilatorFrequencyHighBand((ULONG)pTuningParam->Antenna->HighOscillator);
-		m_pIBDA_LNBInfo->put_LocalOscilatorFrequencyLowBand((ULONG)pTuningParam->Antenna->LowOscillator);
+		m_pIBDA_LNBInfo->put_LocalOscilatorFrequencyHighBand((ULONG)pTuningParam->Antenna.HighOscillator);
+		m_pIBDA_LNBInfo->put_LocalOscilatorFrequencyLowBand((ULONG)pTuningParam->Antenna.LowOscillator);
 
 		// LNBスイッチの周波数を設定
-		if (pTuningParam->Antenna->LNBSwitch != -1L) {
+		if (pTuningParam->Antenna.LNBSwitch != -1L) {
 			// LNBSwitch周波数の設定がされている
-			m_pIBDA_LNBInfo->put_HighLowSwitchFrequency((ULONG)pTuningParam->Antenna->LNBSwitch);
+			m_pIBDA_LNBInfo->put_HighLowSwitchFrequency((ULONG)pTuningParam->Antenna.LNBSwitch);
 		}
 		else {
 			// 10GHzを設定しておけばHigh側に、20GHzを設定しておけばLow側に切替わるはず
-			m_pIBDA_LNBInfo->put_HighLowSwitchFrequency((pTuningParam->Antenna->Tone != 0L) ? 10000000UL : 20000000UL);
+			m_pIBDA_LNBInfo->put_HighLowSwitchFrequency((pTuningParam->Antenna.Tone != 0L) ? 10000000UL : 20000000UL);
 		}
 	}
 
@@ -350,27 +350,27 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParam)
 		m_pIBDA_DigitalDemodulator->put_SpectralInversion(&eSpectralInversion);
 
 		// 内部前方誤り訂正のタイプを設定
-		eInnerFECMethod = pTuningParam->Modulation->InnerFEC;
+		eInnerFECMethod = pTuningParam->Modulation.InnerFEC;
 		m_pIBDA_DigitalDemodulator->put_InnerFECMethod(&eInnerFECMethod);
 
 		// 内部 FEC レートを設定
-		eInnerFECRate = pTuningParam->Modulation->InnerFECRate;
+		eInnerFECRate = pTuningParam->Modulation.InnerFECRate;
 		m_pIBDA_DigitalDemodulator->put_InnerFECRate(&eInnerFECRate);
 
 		// 変調タイプを設定
-		eModulationType = pTuningParam->Modulation->Modulation;
+		eModulationType = pTuningParam->Modulation.Modulation;
 		m_pIBDA_DigitalDemodulator->put_ModulationType(&eModulationType);
 
 		// 外部前方誤り訂正のタイプを設定
-		eOuterFECMethod = pTuningParam->Modulation->OuterFEC;
+		eOuterFECMethod = pTuningParam->Modulation.OuterFEC;
 		m_pIBDA_DigitalDemodulator->put_OuterFECMethod(&eOuterFECMethod);
 
 		// 外部 FEC レートを設定
-		eOuterFECRate = pTuningParam->Modulation->OuterFECRate;
+		eOuterFECRate = pTuningParam->Modulation.OuterFECRate;
 		m_pIBDA_DigitalDemodulator->put_OuterFECRate(&eOuterFECRate);
 
 		// シンボル レートを設定
-		SymbolRate = (ULONG)pTuningParam->Modulation->SymbolRate;
+		SymbolRate = (ULONG)pTuningParam->Modulation.SymbolRate;
 		m_pIBDA_DigitalDemodulator->put_SymbolRate(&SymbolRate);
 	}
 
@@ -383,7 +383,7 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParam)
 		m_pIBDA_FrequencyFilter->put_Polarity(m_bLNBPowerOff ? (Polarisation)0L : pTuningParam->Polarisation);
 
 		// 周波数の帯域幅 (MHz)を設定
-		m_pIBDA_FrequencyFilter->put_Bandwidth((ULONG)pTuningParam->Modulation->BandWidth);
+		m_pIBDA_FrequencyFilter->put_Bandwidth((ULONG)pTuningParam->Modulation.BandWidth);
 
 		// RF 信号の周波数を設定
 		m_pIBDA_FrequencyFilter->put_Frequency((ULONG)pTuningParam->Frequency);
