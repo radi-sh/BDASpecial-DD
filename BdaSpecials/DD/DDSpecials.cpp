@@ -583,12 +583,17 @@ const HRESULT CDDSpecials::GetSignalStrength(float *fVal)
 	return S_OK;
 }
 
-const HRESULT CDDSpecials::PreLockChannel(const TuningParam *pTuningParam)
+const HRESULT CDDSpecials::PreLockChannel(TuningParam *pTuningParam)
 {
 	return S_OK;
 }
 
 const HRESULT CDDSpecials::PreTuneRequest(const TuningParam *pTuningParam, ITuneRequest *pITuneRequest)
+{
+	return S_OK;
+}
+
+const HRESULT CDDSpecials::PostTuneRequest(const TuningParam * pTuningParam)
 {
 	return S_OK;
 }
