@@ -173,6 +173,7 @@ private:
 	CComPtr<IBDA_DiseqCommand> m_pIBDA_DiseqCommand;
 	CComPtr<IBDA_SignalStatistics> m_pIBDA_SignalStatistics;
 	CComPtr<IBaseFilter> m_pTunerDevice;
+	CRITICAL_SECTION m_CriticalSection;
 
 	// チューニングスペース毎のデータ
 	struct TuningSpaceData {
