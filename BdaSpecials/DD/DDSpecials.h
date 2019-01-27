@@ -10,10 +10,10 @@
 //
 // Broadcast Driver Architecture で定義されている Property set / Method set
 //
-// Input pin, id:0
+// KSNODE_BDA_RF_TUNER Input pin, id:0
 static constexpr GUID KSPROPSETID_BdaFrequencyFilter = { 0x71985f47, 0x1ca1, 0x11d3,{ 0x9c, 0xc8, 0x0, 0xc0, 0x4f, 0x79, 0x71, 0xe0 } };
 
-enum KSPROPERTY_BDA_FREQUENCY_FILTER {
+enum KSPROPERTY_BDA_FREQUENCY_FILTER {					// MinProperty=32
 	KSPROPERTY_BDA_RF_TUNER_FREQUENCY = 0,				// get/set		MinData=4
 	KSPROPERTY_BDA_RF_TUNER_POLARITY,					// get/set		MinData=4
 	KSPROPERTY_BDA_RF_TUNER_RANGE,						// get/set		MinData=4
@@ -26,10 +26,10 @@ enum KSPROPERTY_BDA_FREQUENCY_FILTER {
 	KSPROPERTY_BDA_RF_TUNER_STANDARD_MODE,				// not supported
 };
 
-// Input pin, id:0
+// KSNODE_BDA_RF_TUNER Input pin, id:0
 static constexpr GUID KSPROPSETID_BdaSignalStats = { 0x1347d106, 0xcf3a, 0x428a,{ 0xa5, 0xcb, 0xac, 0xd, 0x9a, 0x2a, 0x43, 0x38 } };
 
-enum KSPROPERTY_BDA_SIGNAL_STATS {
+enum KSPROPERTY_BDA_SIGNAL_STATS {						// MinProperty=32
 	KSPROPERTY_BDA_SIGNAL_STRENGTH = 0,					// get only		MinData=4
 	KSPROPERTY_BDA_SIGNAL_QUALITY,						// get only		MinData=4
 	KSPROPERTY_BDA_SIGNAL_PRESENT,						// get only		MinData=4
@@ -39,18 +39,18 @@ enum KSPROPERTY_BDA_SIGNAL_STATS {
 	KSPROPERTY_BDA_SIGNAL_LOCK_TYPE,					// get only		MinData=4
 };
 
-// Input pin, id:0
+// KSNODE_BDA_RF_TUNER Input pin, id:0
 static constexpr GUID KSPROPSETID_BdaLNBInfo = { 0x992cf102, 0x49f9, 0x4719,{ 0xa6, 0x64, 0xc4, 0xf2, 0x3e, 0x24, 0x8, 0xf4 } };
 
-enum KSPROPERTY_BDA_LNB_INFO {
+enum KSPROPERTY_BDA_LNB_INFO {							// MinProperty=32
 	KSPROPERTY_BDA_LNB_LOF_LOW_BAND = 0,				// get/set		MinData=4
 	KSPROPERTY_BDA_LNB_LOF_HIGH_BAND,					// get/set		MinData=4
 	KSPROPERTY_BDA_LNB_SWITCH_FREQUENCY,				// get/set		MinData=4
 };
 
-// Input pin, id:0
+// KSNODE_BDA_RF_TUNER Input pin, id:0
 static constexpr GUID KSPROPSETID_BdaDiseqCommand = { 0xf84e2ab0, 0x3c6b, 0x45e3,{ 0xa0, 0xfc, 0x86, 0x69, 0xd4, 0xb8, 0x1f, 0x11 } };
-enum KSPROPERTY_BDA_DISEQC_COMMAND {
+enum KSPROPERTY_BDA_DISEQC_COMMAND {					// MinProperty=32
 	KSPROPERTY_BDA_DISEQC_ENABLE = 0,					// get/set		MinData=4
 	KSPROPERTY_BDA_DISEQC_LNB_SOURCE,					// get/set		MinData=4
 	KSPROPERTY_BDA_DISEQC_USETONEBURST,					// not supported
@@ -59,10 +59,10 @@ enum KSPROPERTY_BDA_DISEQC_COMMAND {
 	KSPROPERTY_BDA_DISEQC_RESPONSE,						// not supported
 };
 
-// Output pin, id:1
+// KSNODE_BDA_*_DEMODULATOR Output pin, id:1
 static constexpr GUID KSPROPSETID_BdaDigitalDemodulator = { 0xef30f379, 0x985b, 0x4d10,{ 0xb6, 0x40, 0xa7, 0x9d, 0x5e, 0x4, 0xe1, 0xe0 } };
 
-enum KSPROPERTY_BDA_DIGITAL_DEMODULATOR {
+enum KSPROPERTY_BDA_DIGITAL_DEMODULATOR {				// MinProperty=32
 	KSPROPERTY_BDA_MODULATION_TYPE = 0,					// get/set		MinData=4
 	KSPROPERTY_BDA_INNER_FEC_TYPE,						// get/set		MinData=4
 	KSPROPERTY_BDA_INNER_FEC_RATE,						// get/set		MinData=4
@@ -78,14 +78,22 @@ enum KSPROPERTY_BDA_DIGITAL_DEMODULATOR {
 	KSPROPERTY_BDA_PLP_NUMBER,							// get/set		MinData=4
 };
 
-// Tuner filter
+// KSNODE_BDA_TS_SELECTOR Output pin, id:2? (driver ver.216で追加・未確認)
+static constexpr GUID KSMETHODSETID_BdaTSSelector = { 0x1dcfafe9, 0xb45e, 0x41b3,{ 0xbb, 0x2a, 0x56, 0x1e, 0xb1, 0x29, 0xae, 0x98 } };
+
+enum KSMETHOD_BDA_TS_SELECTOR {							// MinMethod=40
+	KSMETHOD_BDA_TS_SELECTOR_SETTSID = 0,				//				MinData=4
+	KSMETHOD_BDA_TS_SELECTOR_GETTSINFORMATION,			// not supported
+};
+
+// KSCATEGORY_BDA_NETWORK_TUNER Tuner filter
 static constexpr GUID KSMETHODSETID_BdaChangeSync = { 0xfd0a5af3, 0xb41d, 0x11d2,{ 0x9c, 0x95, 0x0, 0xc0, 0x4f, 0x79, 0x71, 0xe0 } };
 
-enum KSMETHOD_BDA_CHANGE_SYNC {
-	KSMETHOD_BDA_START_CHANGES = 0,
-	KSMETHOD_BDA_CHECK_CHANGES,
-	KSMETHOD_BDA_COMMIT_CHANGES,
-	KSMETHOD_BDA_GET_CHANGE_STATE,
+enum KSMETHOD_BDA_CHANGE_SYNC {							// MinMethod=24
+	KSMETHOD_BDA_START_CHANGES = 0,						//				MinData=0
+	KSMETHOD_BDA_CHECK_CHANGES,							//				MinData=0
+	KSMETHOD_BDA_COMMIT_CHANGES,						//				MinData=0
+	KSMETHOD_BDA_GET_CHANGE_STATE,						//				MinData=0
 };
 */
 
@@ -93,10 +101,10 @@ enum KSMETHOD_BDA_CHANGE_SYNC {
 // Digital Devices BDA tuner filter driver 固有の Property set
 //
 
-// Input pin, id:0
+// KSNODE_BDA_RF_TUNER Input pin, id:0
 static constexpr GUID KSPROPERTYSET_DD_BDA_TUNER_CONFIG = { 0x0aa8a601, 0xa240, 0x11de, {0xb1, 0x30, 0x00, 0x00, 0x00, 0x00, 0x4d, 0x56} };
 
-enum KSPROPERTY_DD_BDA_TUNER_CONFIG {
+enum KSPROPERTY_DD_BDA_TUNER_CONFIG {					// MinProperty=32
 	KSPROPERTY_DD_BDA_SCIF_SETTINGS = 0,				// get/set		MinData=16
 	KSPROPERTY_DD_BDA_SCIF_SETTINGS_PERSISTANT = 1,		// get/set		MinData=16
 	KSPROPERTY_DD_BDA_LMS_CONFIG = 2,					// get/set		MinData=8
@@ -133,10 +141,10 @@ enum DD_BDA_LMS_CONFIG_MODE {
 	DD_BDA_LMS_CONFIG_MODE_SCIF = 2,
 };
 
-// Output pin, id:1
+// KSNODE_BDA_*_DEMODULATOR Output pin, id:1
 static constexpr GUID KSPROPERTYSET_DD_BDA_SIGNAL_INFO = { 0x0aa8a602, 0xa240, 0x11de, {0xb1, 0x30, 0x00, 0x00, 0x00, 0x00, 0x4d, 0x56} };
 
-enum KSPROPERTY_DD_BDA_SIGNAL_INFO {
+enum KSPROPERTY_DD_BDA_SIGNAL_INFO {					// MinProperty=32
 	KSPROPERTY_DD_BDA_SIGNAL_IQ,						// get only		MinData=4	ARRAY OF SHORT (only supported on a subset of the hardware)
 	KSPROPERTY_DD_BDA_SIGNAL_SNR,						// get only		MinData=4	LONG  ( dB * 10 )
 	KSPROPERTY_DD_BDA_SIGNAL_BER,						// get only		MinData=8	ULONG*2 ( Numerator,Denominator )  Pre RS/BCH
@@ -164,10 +172,10 @@ enum DD_SIGNAL_STANDARD {
 	DD_SIGNAL_STANDARD_J83B = 16,
 };
 
-// Output pin, id:1
+// KSNODE_BDA_*_DEMODULATOR Output pin, id:1
 static constexpr GUID STATIC_KSPROPERTYSET_DD_BDA_SIGNAL_INFO2 = { 0x0aa8a603, 0xa240, 0x11de, {0xb1, 0x30, 0x00, 0x00, 0x00, 0x00, 0x4d, 0x56} };
 
-enum KSPROPERTY_DD_BDA_SIGNAL_INFO2 {
+enum KSPROPERTY_DD_BDA_SIGNAL_INFO2 {					// MinProperty=32
 	KSPROPERTY_DD_BDA_SIGNAL_TYPE,						// get only		MinData=4	ULONG (DD_SIGNAL_TYPE_xxx)
 	KSPROPERTY_DD_BDA_SIGNAL_T2_PLPIDS,					// get only		MinData=284	DD_T2_PLPIDS
 };
@@ -194,10 +202,10 @@ enum DD_T2_PLPIDS_FLAGS {
 	DD_T2_PLPIDS_LITE = 0x00000002,	// 1: Is Lite
 };
 
-// Output pin, id:1
+// KSNODE_BDA_*_DEMODULATOR Output pin, id:1
 static constexpr GUID KSPROPERTYSET_DD_BDA_DIGITAL_DEMODULATOR = { 0x0aa8a605, 0xa240, 0x11de, {0xb1, 0x30, 0x00, 0x00, 0x00, 0x00, 0x4d, 0x56} };
 
-enum KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR {
+enum KSPROPERTY_DD_BDA_DIGITAL_DEMODULATOR {			// MinProperty=32
 	KSPROPERTY_DD_BDA_SELECT_STANDARD = 0,				// get/set		MinData=4	Select signal standard
 	KSPROPERTY_DD_BDA_SELECT_STREAM = 1,				// get/set		MinData=4	DVB-S2: input stream id
 														//							DVB-T2: 0 = Base Profile, 1 = Lite Profile
@@ -235,13 +243,13 @@ enum DD_BDA_S2_MODMASK {
 	DD_BDA_S2_MODMASK_256APSK = 64,
 };
 
-// Tuner filter?・KSPROPERTYSET_DD_BDA_SIGNAL_INFO と同じ?(未確認)
+// KSCATEGORY_BDA_NETWORK_TUNER Tuner filter?・KSPROPERTYSET_DD_BDA_SIGNAL_INFO と同じ? (未確認)
 static constexpr GUID KSPROPERTYSET_DD_BDA_UNKNOWN_A606 = { 0x0aa8a606, 0xa240, 0x11de, {0xb1, 0x30, 0x00, 0x00, 0x00, 0x00, 0x4d, 0x56} };
 
-// Tuner filter?(未確認)
+// KSCATEGORY_BDA_NETWORK_TUNER Tuner filter? (未確認)
 static constexpr GUID KSPROPERTYSET_DD_BDA_UNKNOWN_A502 = { 0x0aa8a502, 0xa240, 0x11de, {0xb1, 0x30, 0x00, 0x00, 0x00, 0x00, 0x4d, 0x56} };
 
-enum KSPROPERTY_DD_BDA_UNKNOWN_A {
+enum KSPROPERTY_DD_BDA_UNKNOWN_A {						// MinProperty=24
 	KSPROPERTYSET_DD_BDA_UNKNOWN_A502_0 = 0,			// get only		MinData=4
 	KSPROPERTYSET_DD_BDA_UNKNOWN_A502_3 = 3,			// get only		MinData=60
 	KSPROPERTYSET_DD_BDA_UNKNOWN_A502_4 = 4,			// get/set		MinData=4
