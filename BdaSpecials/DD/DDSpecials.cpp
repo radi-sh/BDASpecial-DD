@@ -387,7 +387,7 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParam)
 			m_pIBDA_FrequencyFilter->put_FrequencyMultiplier(1000UL);
 
 			// M†‚Ì•Î”g‚ðÝ’è
-			m_pIBDA_FrequencyFilter->put_Polarity(m_bLNBPowerOff ? (Polarisation)0L : pTuningParam->Polarisation);
+			m_pIBDA_FrequencyFilter->put_Polarity(m_bLNBPowerOff ? Polarisation::BDA_POLARISATION_NOT_DEFINED : pTuningParam->Polarisation);
 
 			// Žü”g”‚Ì‘Ñˆæ• (MHz)‚ðÝ’è
 			m_pIBDA_FrequencyFilter->put_Bandwidth((ULONG)pTuningParam->Modulation.BandWidth);
