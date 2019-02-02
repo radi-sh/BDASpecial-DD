@@ -268,6 +268,92 @@ const HRESULT CDDSpecials::InitializeHook(void)
 		OutputDebug(L"SelectStream is enabled.\n");
 	}
 
+	/*
+	// KSMETHODSETID_BdaTSSelector がサポートされているか
+	{
+		KSM_NODE Method = {};
+		DWORD Type = 0;
+		ULONG BytesReturned = 0;
+		Method.Method = { KSMETHODSETID_BdaTSSelector, KSMETHOD_BDA_TS_SELECTOR_SETTSID, KSMETHOD_TYPE_BASICSUPPORT };
+		Method.NodeId = 0;
+		if (FAILED(hr = m_pControlTunerOutputPin->KsMethod((PKSMETHOD)&Method, sizeof(Method), &Type, sizeof(Type), &BytesReturned))) {
+			switch (hr) {
+			case E_NOTIMPL:
+			case E_PROP_SET_UNSUPPORTED:
+				OutputDebug(L"KSMETHODSETID_BdaTSSelector method is not supported.\n");
+				break;
+
+			case E_PROP_ID_UNSUPPORTED:
+				OutputDebug(L"KSMETHOD_BDA_TS_SELECTOR_SETTSID method ID is not supported.\n");
+				break;
+
+			default:
+				OutputDebug(L"KSMETHOD_BDA_TS_SELECTOR_SETTSID:KSPROPERTY_TYPE_BASICSUPPORT: Fail to IKsControl::KsProperty() function.\n");
+				break;
+			}
+		}
+		else {
+			OutputDebug(L"KSMETHODSETID_BdaTSSelector::KSMETHOD_BDA_TS_SELECTOR_SETTSID: Type=%ld.\n", Type);
+		}
+	}
+
+	// KSPROPERTYSET_DD_BDA_UNKNOWN_A606 がサポートされているか
+	{
+		KSP_NODE Prop = {};
+		DWORD TypeSupport = 0;
+		ULONG BytesReturned = 0;
+		Prop.Property = { KSPROPERTYSET_DD_BDA_UNKNOWN_A606, 0, KSPROPERTY_TYPE_BASICSUPPORT };
+		Prop.NodeId = 0;
+		if (FAILED(hr = m_pControlTunerFilter->KsProperty((PKSPROPERTY)&Prop, sizeof(Prop), &TypeSupport, sizeof(TypeSupport), &BytesReturned))) {
+			switch (hr) {
+			case E_NOTIMPL:
+			case E_PROP_SET_UNSUPPORTED:
+				OutputDebug(L"KSPROPERTYSET_DD_BDA_UNKNOWN_A606 property set is not supported.\n");
+				break;
+
+			case E_PROP_ID_UNSUPPORTED:
+				OutputDebug(L"0 property ID is not supported.\n");
+				break;
+
+			default:
+				OutputDebug(L"0:KSPROPERTY_TYPE_BASICSUPPORT: Fail to IKsControl::KsProperty() function.\n");
+				break;
+			}
+		}
+		else {
+			OutputDebug(L"KSPROPERTYSET_DD_BDA_UNKNOWN_A606::0: TypeSupport=%ld.\n", TypeSupport);
+		}
+	}
+
+	// KSPROPERTYSET_DD_BDA_UNKNOWN_A502 がサポートされているか
+	{
+		KSP_NODE Prop = {};
+		DWORD TypeSupport = 0;
+		ULONG BytesReturned = 0;
+		Prop.Property = { KSPROPERTYSET_DD_BDA_UNKNOWN_A502, 0, KSPROPERTY_TYPE_BASICSUPPORT };
+		Prop.NodeId = 0;
+		if (FAILED(hr = m_pControlTunerFilter->KsProperty((PKSPROPERTY)&Prop, sizeof(Prop), &TypeSupport, sizeof(TypeSupport), &BytesReturned))) {
+			switch (hr) {
+			case E_NOTIMPL:
+			case E_PROP_SET_UNSUPPORTED:
+				OutputDebug(L"KSPROPERTYSET_DD_BDA_UNKNOWN_A502 property set is not supported.\n");
+				break;
+
+			case E_PROP_ID_UNSUPPORTED:
+				OutputDebug(L"0 property ID is not supported.\n");
+				break;
+
+			default:
+				OutputDebug(L"0:KSPROPERTY_TYPE_BASICSUPPORT: Fail to IKsControl::KsProperty() function.\n");
+				break;
+			}
+		}
+		else {
+			OutputDebug(L"KSPROPERTYSET_DD_BDA_UNKNOWN_A502::0: TypeSupport=%ld.\n", TypeSupport);
+		}
+	}
+	*/
+
 	return S_OK;
 }
 

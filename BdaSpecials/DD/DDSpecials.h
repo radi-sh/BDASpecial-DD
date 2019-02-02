@@ -78,22 +78,22 @@ enum KSPROPERTY_BDA_DIGITAL_DEMODULATOR {				// MinProperty=32
 	KSPROPERTY_BDA_PLP_NUMBER,							// get/set		MinData=4
 };
 
-// KSNODE_BDA_TS_SELECTOR Output pin, id:2? (driver ver.216で追加・未確認)
+// KSNODE_BDA_TS_SELECTOR Output pin, id:1 (driver 3.0.2.216で追加・ISDB-S Filter のみ)
 static constexpr GUID KSMETHODSETID_BdaTSSelector = { 0x1dcfafe9, 0xb45e, 0x41b3,{ 0xbb, 0x2a, 0x56, 0x1e, 0xb1, 0x29, 0xae, 0x98 } };
 
 enum KSMETHOD_BDA_TS_SELECTOR {							// MinMethod=40
-	KSMETHOD_BDA_TS_SELECTOR_SETTSID = 0,				//				MinData=4
+	KSMETHOD_BDA_TS_SELECTOR_SETTSID = 0,				// modify/source	MinData=4
 	KSMETHOD_BDA_TS_SELECTOR_GETTSINFORMATION,			// not supported
 };
 
-// KSCATEGORY_BDA_NETWORK_TUNER Tuner filter
+// KSCATEGORY_BDA_NETWORK_TUNER Tuner filter, id:0
 static constexpr GUID KSMETHODSETID_BdaChangeSync = { 0xfd0a5af3, 0xb41d, 0x11d2,{ 0x9c, 0x95, 0x0, 0xc0, 0x4f, 0x79, 0x71, 0xe0 } };
 
 enum KSMETHOD_BDA_CHANGE_SYNC {							// MinMethod=24
-	KSMETHOD_BDA_START_CHANGES = 0,						//				MinData=0
-	KSMETHOD_BDA_CHECK_CHANGES,							//				MinData=0
-	KSMETHOD_BDA_COMMIT_CHANGES,						//				MinData=0
-	KSMETHOD_BDA_GET_CHANGE_STATE,						//				MinData=0
+	KSMETHOD_BDA_START_CHANGES = 0,						// none				MinData=0
+	KSMETHOD_BDA_CHECK_CHANGES,							// none				MinData=0
+	KSMETHOD_BDA_COMMIT_CHANGES,						// none				MinData=0
+	KSMETHOD_BDA_GET_CHANGE_STATE,						// none				MinData=0
 };
 */
 
@@ -243,10 +243,10 @@ enum DD_BDA_S2_MODMASK {
 	DD_BDA_S2_MODMASK_256APSK = 64,
 };
 
-// KSCATEGORY_BDA_NETWORK_TUNER Tuner filter?・KSPROPERTYSET_DD_BDA_SIGNAL_INFO と同じ? (未確認)
+// KSCATEGORY_BDA_NETWORK_TUNER Tuner filter, id:0・KSPROPERTYSET_DD_BDA_SIGNAL_INFO と同じ?
 static constexpr GUID KSPROPERTYSET_DD_BDA_UNKNOWN_A606 = { 0x0aa8a606, 0xa240, 0x11de, {0xb1, 0x30, 0x00, 0x00, 0x00, 0x00, 0x4d, 0x56} };
 
-// KSCATEGORY_BDA_NETWORK_TUNER Tuner filter? (未確認)
+// KSCATEGORY_BDA_NETWORK_TUNER Tuner filter, id:0
 static constexpr GUID KSPROPERTYSET_DD_BDA_UNKNOWN_A502 = { 0x0aa8a502, 0xa240, 0x11de, {0xb1, 0x30, 0x00, 0x00, 0x00, 0x00, 0x4d, 0x56} };
 
 enum KSPROPERTY_DD_BDA_UNKNOWN_A {						// MinProperty=24
