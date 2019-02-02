@@ -8,6 +8,9 @@
 #include <dshow.h>
 #include "CIniFileAccess.h"
 
+#include "Rpc.h"
+#pragma comment(lib, "Rpcrt4.lib")
+
 FILE *g_fpLog = NULL;
 
 HMODULE hMySelf;
@@ -148,6 +151,21 @@ const HRESULT CDDSpecials::InitializeHook(void)
 		}
 		OutputDebug(L"Succeeded to get NodeTypes. Num=%ld.\n", NodeTypes);
 		for (ULONG i = 0; i < NodeTypes; i++) {
+			ULONG Interfaces;
+			GUID Interface[32];
+			if (FAILED(pIBDA_Topology->GetNodeInterfaces(NodeType[i], &Interfaces, 32, Interface))) {
+				OutputDebug(L"Fail to get GetNodeInterfaces for NodeType[%ld]=%ld.\n", i, NodeType[i]);
+			}
+			else {
+				for (ULONG j = 0; j < Interfaces; j++) {
+					RPC_STATUS rpcret;
+					WCHAR *wszGuid = NULL;
+					if ((rpcret = ::UuidToStringW(&Interface[j], (RPC_WSTR *)&wszGuid)) == RPC_S_OK) {
+						OutputDebug(L"Found GUID=%s, NodeType[%ld]=%ld.\n", wszGuid, i, NodeType[i]);
+						::RpcStringFreeW((RPC_WSTR *)&wszGuid);
+					}
+				}
+			}
 			CComPtr<IUnknown> pControlNode;
 			if (SUCCEEDED(hr = pIBDA_Topology->GetControlNode(0UL, 1UL, NodeType[i], &pControlNode))) {
 				OutputDebug(L"GetControlNode(0, 1, NodeType[%ld]=%ld).\n", i, NodeType[i]);
