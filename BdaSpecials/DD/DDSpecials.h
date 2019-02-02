@@ -372,15 +372,17 @@ private:
 	};
 
 	HMODULE m_hMySelf;
-	CComPtr<IKsControl> m_pControlTunerOutputPin;
-	CComPtr<IBDA_DeviceControl> m_pIBDA_DeviceControl;
-	CComPtr<IBDA_LNBInfo> m_pIBDA_LNBInfo;
-	CComPtr<IBDA_DigitalDemodulator> m_pIBDA_DigitalDemodulator;
-	CComPtr<IBDA_FrequencyFilter> m_pIBDA_FrequencyFilter;
-	CComPtr<IBDA_DiseqCommand> m_pIBDA_DiseqCommand;
-	CComPtr<IBDA_SignalStatistics> m_pIBDA_SignalStatistics;
-	CComPtr<IBaseFilter> m_pTunerDevice;
-	CRITICAL_SECTION m_CriticalSection;
+	CComPtr<IKsControl> m_pControlTunerFilter;							// Tuner の IKsControl
+	CComPtr<IKsControl> m_pControlTunerInputPin;						// Input Pin の IKsControl
+	CComPtr<IKsControl> m_pControlTunerOutputPin;						// Output Pin の IKsControl
+	CComPtr<IBDA_DeviceControl> m_pIBDA_DeviceControl;					// IBDA_DeviceControl (Tuner)
+	CComPtr<IBDA_LNBInfo> m_pIBDA_LNBInfo;								// IBDA_LNBInfo (Input Pin, Node 0)
+	CComPtr<IBDA_DigitalDemodulator> m_pIBDA_DigitalDemodulator;		// IBDA_DigitalDemodulator (Output Pin, Node 1)
+	CComPtr<IBDA_FrequencyFilter> m_pIBDA_FrequencyFilter;				// IBDA_FrequencyFilter ()
+	CComPtr<IBDA_DiseqCommand> m_pIBDA_DiseqCommand;					// IBDA_DiseqCommand ()
+	CComPtr<IBDA_SignalStatistics> m_pIBDA_SignalStatistics;			// m_pIBDA_SignalStatistics()
+	CComPtr<IBaseFilter> m_pTunerDevice;								// Tuner の IBaseFilter
+	CRITICAL_SECTION m_CriticalSection;									// 排他処理用
 
 	// チューニングスペース毎のデータ
 	struct TuningSpaceData {

@@ -82,34 +82,52 @@ const HRESULT CDDSpecials::InitializeHook(void)
 		m_pIBDA_DeviceControl = pDeviceControl;
 	}
 
-	// チューナーデバイスの output pinを見つける
+	// Tuner の IKsControl
+	{
+		CComQIPtr<IKsControl> pControlTunerFilter(m_pTunerDevice);
+		if (!pControlTunerFilter) {
+			OutputDebug(L"Fail to get IKsControl of tuner filter.\n");
+			return E_NOINTERFACE;
+		}
+		m_pControlTunerFilter = pControlTunerFilter;
+	}
+
+	// チューナーデバイス input pin の IKsControl / output pin の IKsControl
 	{
 		CComPtr<IEnumPins> pPinEnum;
-		m_pTunerDevice->EnumPins(&pPinEnum);
-		if (pPinEnum) {
-			while (!m_pControlTunerOutputPin) {
+		if SUCCEEDED(hr = m_pTunerDevice->EnumPins(&pPinEnum) && pPinEnum) {
+			do {
 				CComPtr<IPin> pPin;
-				if (SUCCEEDED(pPinEnum->Next(1, &pPin, NULL))) {
-					if (!pPin) {
-						OutputDebug(L"Can not find tuner output pin.\n");
-						break;
-					}
-					PIN_DIRECTION dir;
-					if (SUCCEEDED(pPin->QueryDirection(&dir)) && dir == PIN_DIRECTION::PINDIR_OUTPUT) {
-						// output pin の IKsPropertySet を取得
-						CComQIPtr<IKsControl> pControlTunerPin(pPin);
-						if (!pControlTunerPin) {
-							OutputDebug(L"Tuner output pin does not have IKsPropertySet.\n");
+				if (S_OK != (hr = pPinEnum->Next(1, &pPin, NULL)) || !pPin) {
+					OutputDebug(L"Can not find tuner input/output pin.\n");
+					break;
+				}
+				PIN_DIRECTION dir;
+				if (SUCCEEDED(hr = pPin->QueryDirection(&dir))) {
+					// input pin / output pin の IKsPropertySet を取得
+					CComQIPtr<IKsControl> pControlTunerPin(pPin);
+					switch (dir) {
+					case PIN_DIRECTION::PINDIR_INPUT:
+						if (!m_pControlTunerInputPin) {
+							m_pControlTunerInputPin = pControlTunerPin;
 						}
-						m_pControlTunerOutputPin = pControlTunerPin;
+						break;
+					case PIN_DIRECTION::PINDIR_OUTPUT:
+						if (!m_pControlTunerOutputPin) {
+							m_pControlTunerOutputPin = pControlTunerPin;
+						}
 						break;
 					}
 				}
-			}
+			} while (!m_pControlTunerInputPin || !m_pControlTunerOutputPin);
 		}
 	}
+	if (!m_pControlTunerInputPin) {
+		OutputDebug(L"Fail to get IKsControl of tuner input pin.\n");
+		return E_NOINTERFACE;
+	}
 	if (!m_pControlTunerOutputPin) {
-		OutputDebug(L"Fail to get IKsPropertySet of tuner output pin.\n");
+		OutputDebug(L"Fail to get IKsControl of tuner output pin.\n");
 		return E_NOINTERFACE;
 	}
 
