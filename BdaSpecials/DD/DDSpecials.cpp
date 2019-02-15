@@ -7,9 +7,7 @@
 
 #include <dshow.h>
 #include "CIniFileAccess.h"
-
-#include "Rpc.h"
-#pragma comment(lib, "Rpcrt4.lib")
+#include "DSFilterEnum.h"
 
 FILE *g_fpLog = NULL;
 
@@ -75,16 +73,6 @@ const HRESULT CDDSpecials::InitializeHook(void)
 
 	HRESULT hr;
 
-	// IBDA_DeviceControl
-	{
-		CComQIPtr<IBDA_DeviceControl> pDeviceControl(m_pTunerDevice);
-		if (!pDeviceControl) {
-			OutputDebug(L"Can not get IBDA_DeviceControl.\n");
-			return E_NOINTERFACE;
-		}
-		m_pIBDA_DeviceControl = pDeviceControl;
-	}
-
 	// Tuner の IKsControl
 	{
 		CComQIPtr<IKsControl> pControlTunerFilter(m_pTunerDevice);
@@ -97,33 +85,27 @@ const HRESULT CDDSpecials::InitializeHook(void)
 
 	// チューナーデバイス input pin の IKsControl / output pin の IKsControl
 	{
-		CComPtr<IEnumPins> pPinEnum;
-		if SUCCEEDED(hr = m_pTunerDevice->EnumPins(&pPinEnum) && pPinEnum) {
-			do {
-				CComPtr<IPin> pPin;
-				if (S_OK != (hr = pPinEnum->Next(1, &pPin, NULL)) || !pPin) {
-					OutputDebug(L"Can not find tuner input/output pin.\n");
-					break;
+		CDSEnumPins DSEnumPins(m_pTunerDevice);
+		CComPtr<IPin> pPin;
+		PIN_DIRECTION dir;
+		do {
+			if (FAILED(hr = DSEnumPins.getNextPin(&pPin, &dir))) {
+				break;
+			}
+			CComQIPtr<IKsControl> pControlTunerPin(pPin);
+			switch (dir) {
+			case PIN_DIRECTION::PINDIR_INPUT:
+				if (!m_pControlTunerInputPin) {
+					m_pControlTunerInputPin = pControlTunerPin;
 				}
-				PIN_DIRECTION dir;
-				if (SUCCEEDED(hr = pPin->QueryDirection(&dir))) {
-					// input pin / output pin の IKsPropertySet を取得
-					CComQIPtr<IKsControl> pControlTunerPin(pPin);
-					switch (dir) {
-					case PIN_DIRECTION::PINDIR_INPUT:
-						if (!m_pControlTunerInputPin) {
-							m_pControlTunerInputPin = pControlTunerPin;
-						}
-						break;
-					case PIN_DIRECTION::PINDIR_OUTPUT:
-						if (!m_pControlTunerOutputPin) {
-							m_pControlTunerOutputPin = pControlTunerPin;
-						}
-						break;
-					}
+				break;
+			case PIN_DIRECTION::PINDIR_OUTPUT:
+				if (!m_pControlTunerOutputPin) {
+					m_pControlTunerOutputPin = pControlTunerPin;
 				}
-			} while (!m_pControlTunerInputPin || !m_pControlTunerOutputPin);
-		}
+				break;
+			}
+		} while (!m_pControlTunerInputPin || !m_pControlTunerOutputPin);
 	}
 	if (!m_pControlTunerInputPin) {
 		OutputDebug(L"Fail to get IKsControl of tuner input pin.\n");
@@ -134,75 +116,69 @@ const HRESULT CDDSpecials::InitializeHook(void)
 		return E_NOINTERFACE;
 	}
 
-	// IBDA_LNBInfo / IBDA_DigitalDemodulator / IBDA_FrequencyFilter / IBDA_DiseqCommand / IBDA_SignalStatistics
+	// IBDA_DeviceControl
 	{
-		CComQIPtr<IBDA_Topology> pIBDA_Topology(m_pTunerDevice);
-		if (!pIBDA_Topology) {
-			OutputDebug(L"Fail to get IBDA_Topology interface.\n");
+		CComQIPtr<IBDA_DeviceControl> pDeviceControl(m_pTunerDevice);
+		if (!pDeviceControl) {
+			OutputDebug(L"Can not get IBDA_DeviceControl.\n");
 			return E_NOINTERFACE;
 		}
-		OutputDebug(L"Succeeded to get IBDA_Topology interface.\n");
+		m_pIBDA_DeviceControl = pDeviceControl;
+	}
 
-		ULONG NodeTypes;
-		ULONG NodeType[32];
-		if (FAILED(hr = pIBDA_Topology->GetNodeTypes(&NodeTypes, 32, NodeType))) {
-			OutputDebug(L"Fail to get NodeTypes.\n");
-			return E_NOINTERFACE;
-		}
-		OutputDebug(L"Succeeded to get NodeTypes. Num=%ld.\n", NodeTypes);
-		for (ULONG i = 0; i < NodeTypes; i++) {
-			ULONG Interfaces;
-			GUID Interface[32];
-			if (FAILED(pIBDA_Topology->GetNodeInterfaces(NodeType[i], &Interfaces, 32, Interface))) {
-				OutputDebug(L"Fail to get GetNodeInterfaces for NodeType[%ld]=%ld.\n", i, NodeType[i]);
-			}
-			else {
-				for (ULONG j = 0; j < Interfaces; j++) {
-					RPC_STATUS rpcret;
-					WCHAR *wszGuid = NULL;
-					if ((rpcret = ::UuidToStringW(&Interface[j], (RPC_WSTR *)&wszGuid)) == RPC_S_OK) {
-						OutputDebug(L"Found GUID=%s, NodeType[%ld]=%ld.\n", wszGuid, i, NodeType[i]);
-						::RpcStringFreeW((RPC_WSTR *)&wszGuid);
-					}
+	// Control Node 取得
+	{
+		CDSEnumNodes DSEnumNodes(m_pTunerDevice);
+
+		// IBDA_FrequencyFilter / IBDA_SignalStatistics / IBDA_LNBInfo / IBDA_DiseqCommand
+		{
+			ULONG NodeTypeTuner = DSEnumNodes.findControlNode(__uuidof(IBDA_FrequencyFilter));
+			if (NodeTypeTuner != -1) {
+				OutputDebug(L"Found RF Tuner Node. NodeType=%ld.\n", NodeTypeTuner);
+				CComPtr<IUnknown> pControlNodeTuner;
+				if (FAILED(hr = DSEnumNodes.getControlNode(NodeTypeTuner, &pControlNodeTuner))) {
+					OutputDebug(L"Fail to get control node.\n");
 				}
-			}
-			CComPtr<IUnknown> pControlNode;
-			if (SUCCEEDED(hr = pIBDA_Topology->GetControlNode(0UL, 1UL, NodeType[i], &pControlNode))) {
-				OutputDebug(L"GetControlNode(0, 1, NodeType[%ld]=%ld).\n", i, NodeType[i]);
-				CComQIPtr<IBDA_LNBInfo> pIBDA_LNBInfo(pControlNode);
-				CComQIPtr<IBDA_FrequencyFilter> pIBDA_FrequencyFilter(pControlNode);
-				CComQIPtr<IBDA_DiseqCommand> pIBDA_DiseqCommand(pControlNode);
-				CComQIPtr<IBDA_DigitalDemodulator> pIBDA_DigitalDemodulator(pControlNode);
-				CComQIPtr<IBDA_SignalStatistics> pIBDA_SignalStatistics(pControlNode);
-				switch(NodeType[i]) {
-				case 0:
-					if (pIBDA_LNBInfo) {
-						m_pIBDA_LNBInfo = pIBDA_LNBInfo;
-						OutputDebug(L"  Found IBDA_LNBInfo.\n");
-					}
+				else {
+					CComQIPtr<IBDA_FrequencyFilter> pIBDA_FrequencyFilter(pControlNodeTuner);
 					if (pIBDA_FrequencyFilter) {
 						m_pIBDA_FrequencyFilter = pIBDA_FrequencyFilter;
 						OutputDebug(L"  Found IBDA_FrequencyFilter.\n");
 					}
-					if (pIBDA_DiseqCommand) {
-						m_pIBDA_DiseqCommand = pIBDA_DiseqCommand;
-						OutputDebug(L"  Found IBDA_DiseqCommand.\n");
-					}
+					CComQIPtr<IBDA_SignalStatistics> pIBDA_SignalStatistics(pControlNodeTuner);
 					if (pIBDA_SignalStatistics) {
 						m_pIBDA_SignalStatistics = pIBDA_SignalStatistics;
 						OutputDebug(L"  Found IBDA_SignalStatistics.\n");
 					}
-					break;
-				case 1:
+					CComQIPtr<IBDA_LNBInfo> pIBDA_LNBInfo(pControlNodeTuner);
+					if (pIBDA_LNBInfo) {
+						m_pIBDA_LNBInfo = pIBDA_LNBInfo;
+						OutputDebug(L"  Found IBDA_LNBInfo.\n");
+					}
+					CComQIPtr<IBDA_DiseqCommand> pIBDA_DiseqCommand(pControlNodeTuner);
+					if (pIBDA_DiseqCommand) {
+						m_pIBDA_DiseqCommand = pIBDA_DiseqCommand;
+						OutputDebug(L"  Found IBDA_DiseqCommand.\n");
+					}
+				}
+			}
+		}
+
+		// IBDA_DigitalDemodulator (DD の driver は Demodulator Node には IBDA_SignalStatistics interface を持たない)
+		{
+			ULONG NodeTypeDemod = DSEnumNodes.findControlNode(__uuidof(IBDA_DigitalDemodulator));
+			if (NodeTypeDemod != -1) {
+				OutputDebug(L"Found Demodulator Node. NodeType=%ld.\n", NodeTypeDemod);
+				CComPtr<IUnknown> pControlNodeDemod;
+				if (FAILED(hr = DSEnumNodes.getControlNode(NodeTypeDemod, &pControlNodeDemod))) {
+					OutputDebug(L"Fail to get control node.\n");
+				}
+				else {
+					CComQIPtr<IBDA_DigitalDemodulator> pIBDA_DigitalDemodulator(pControlNodeDemod);
 					if (pIBDA_DigitalDemodulator) {
 						m_pIBDA_DigitalDemodulator = pIBDA_DigitalDemodulator;
 						OutputDebug(L"  Found IBDA_DigitalDemodulator.\n");
 					}
-					break;
-				}
-				if (m_pIBDA_LNBInfo && m_pIBDA_DigitalDemodulator && m_pIBDA_FrequencyFilter && m_pIBDA_DiseqCommand && m_pIBDA_SignalStatistics) {
-					OutputDebug(L"All control nodes was found.\n");
-					break;
 				}
 			}
 		}
