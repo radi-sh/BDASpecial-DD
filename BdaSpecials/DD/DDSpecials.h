@@ -384,11 +384,22 @@ private:
 	CComPtr<IBaseFilter> m_pTunerDevice;								// Tuner の IBaseFilter
 	CRITICAL_SECTION m_CriticalSection;									// 排他処理用
 
+	// LNB給電モード
+	enum enumLNBPowerMode {
+		eLNBPowerModeForceNone = -1,
+		eLNBPowerModeForceOff = 0,		// Off 固定
+		eLNBPowerModeForce13V = 1,		// 13V 固定
+		eLNBPowerModeForce18V = 8,		// 18V 固定
+		eLNBPowerModeAuto = 24,			// CH設定の偏波指定に従う(13V/18V)
+	};
+
 	// チューニングスペース毎のデータ
 	struct TuningSpaceData {
 		DD_SIGNAL_STANDARD SignalStandard;
+		enumLNBPowerMode LNBPowerMode;
 		TuningSpaceData(void)
-			: SignalStandard(DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_UNDEFINED)
+			: SignalStandard(DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_UNDEFINED),
+			LNBPowerMode(enumLNBPowerMode::eLNBPowerModeAuto)
 		{
 		}
 
@@ -410,13 +421,14 @@ private:
 			Spaces.clear();
 		}
 
-		void Regist(unsigned int space, DD_SIGNAL_STANDARD signalStandard)
+		void Regist(unsigned int space, DD_SIGNAL_STANDARD signalStandard, enumLNBPowerMode lnbPowerMode)
 		{
 			auto itSpace = Spaces.find(space);
 			if (itSpace == Spaces.end()) {
 				itSpace = Spaces.emplace(space, TuningSpaceData()).first;
 			}
 			itSpace->second.SignalStandard = signalStandard;
+			itSpace->second.LNBPowerMode = lnbPowerMode;
 		}
 
 		DD_SIGNAL_STANDARD GetSignalStandard(unsigned int space)
@@ -427,11 +439,19 @@ private:
 			}
 			return itSpace->second.SignalStandard;
 		}
+
+		enumLNBPowerMode GetLNBPowerMode(unsigned int space)
+		{
+			auto itSpace = Spaces.find(space);
+			if (itSpace == Spaces.end()) {
+				return enumLNBPowerMode::eLNBPowerModeForceNone;
+			}
+			return itSpace->second.LNBPowerMode;
+		}
 	};
 	TuningData m_TuningData;
 
 	BOOL m_bSelectStreamRelative;
 	BOOL m_bDisableTSMF;
-	BOOL m_bLNBPowerOff;
 	KSPROPERTY_DD_BDA_SIGNAL_INFO m_nGetSignalStrengthFunction;
 };

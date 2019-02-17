@@ -509,7 +509,30 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParam)
 			m_pIBDA_FrequencyFilter->put_FrequencyMultiplier(1000UL);
 
 			// êMçÜÇÃïŒîgÇê›íË
-			m_pIBDA_FrequencyFilter->put_Polarity(m_bLNBPowerOff ? Polarisation::BDA_POLARISATION_NOT_DEFINED : pTuningParam->Polarisation);
+			Polarisation pol = pTuningParam->Polarisation;
+			enumLNBPowerMode lnbMode = m_TuningData.GetLNBPowerMode(pTuningParam->IniSpaceID);
+			switch (lnbMode) {
+			case enumLNBPowerMode::eLNBPowerModeForceOff:
+				pol = Polarisation::BDA_POLARISATION_NOT_DEFINED;
+				break;
+			case enumLNBPowerMode::eLNBPowerModeForce13V:
+				if (pol >= Polarisation::BDA_POLARISATION_CIRCULAR_L) {
+					pol = Polarisation::BDA_POLARISATION_CIRCULAR_R;
+				}
+				else {
+					pol = Polarisation::BDA_POLARISATION_LINEAR_V;
+				}
+				break;
+			case enumLNBPowerMode::eLNBPowerModeForce18V:
+				if (pol >= Polarisation::BDA_POLARISATION_CIRCULAR_L) {
+					pol = Polarisation::BDA_POLARISATION_CIRCULAR_L;
+				}
+				else {
+					pol = Polarisation::BDA_POLARISATION_LINEAR_H;
+				}
+				break;
+			}
+			m_pIBDA_FrequencyFilter->put_Polarity(pol);
 
 			// é¸îgêîÇÃë—àÊïù (MHz)Çê›íË
 			m_pIBDA_FrequencyFilter->put_Bandwidth((ULONG)pTuningParam->Modulation.BandWidth);
@@ -619,6 +642,13 @@ const HRESULT CDDSpecials::ReadIniFile(const WCHAR *szIniFilePath)
 		{ L"SYMBOLRATE",     KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_SYMBOLRATE },
 	};
 
+	static const std::map<const std::wstring, const int, std::less<>> mapLNBPowerMode = {
+		{ L"OFF",  enumLNBPowerMode::eLNBPowerModeForceOff },
+		{ L"13V",  enumLNBPowerMode::eLNBPowerModeForce13V },
+		{ L"18V",  enumLNBPowerMode::eLNBPowerModeForce18V },
+		{ L"AUTO", enumLNBPowerMode::eLNBPowerModeAuto },
+	};
+
 	CIniFileAccess IniFileAccess(szIniFilePath);
 	IniFileAccess.SetSectionName(L"DD");
 
@@ -629,7 +659,7 @@ const HRESULT CDDSpecials::ReadIniFile(const WCHAR *szIniFilePath)
 	m_bDisableTSMF = IniFileAccess.ReadKeyB(L"DisableTSMF", FALSE);
 
 	// LNB PowerÇã≠êßìIÇ…OFFÇ…Ç∑ÇÈ
-	m_bLNBPowerOff = IniFileAccess.ReadKeyB(L"LNBPowerOff", FALSE);
+	BOOL bLNBPowerOff = IniFileAccess.ReadKeyB(L"LNBPowerOff", FALSE);
 
 	// GetSignalStrength ä÷êîÇ≈ï‘Ç∑íl
 	m_nGetSignalStrengthFunction = (KSPROPERTY_DD_BDA_SIGNAL_INFO)IniFileAccess.ReadKeyIValueMap(L"GetSignalStrengthFunction", -1, mapGetSignalStrengthFunction);
@@ -641,8 +671,11 @@ const HRESULT CDDSpecials::ReadIniFile(const WCHAR *szIniFilePath)
 			continue;
 		}
 		IniFileAccess.CreateSectionData();
-		DD_SIGNAL_STANDARD ss = (DD_SIGNAL_STANDARD)IniFileAccess.ReadKeyIValueMapSectionData(L"DD_SelectStandard", DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_UNDEFINED, mapSignalStandard);
-		m_TuningData.Regist(space, ss);
+		// êMçÜãKäi
+		DD_SIGNAL_STANDARD nSelectStandard = (DD_SIGNAL_STANDARD)IniFileAccess.ReadKeyIValueMapSectionData(L"DD_SelectStandard", DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_UNDEFINED, mapSignalStandard);
+		// LNB Power Mode
+		enumLNBPowerMode LNBPowerMode = (enumLNBPowerMode)IniFileAccess.ReadKeyIValueMapSectionData(L"DD_LNBPowerMode", bLNBPowerOff ? enumLNBPowerMode::eLNBPowerModeForceOff : enumLNBPowerMode::eLNBPowerModeAuto, mapLNBPowerMode);
+		m_TuningData.Regist(space, nSelectStandard, LNBPowerMode);
 	}
 
 	return S_OK;
