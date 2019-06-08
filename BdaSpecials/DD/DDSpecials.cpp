@@ -498,7 +498,7 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParam)
 			enumLNBPowerMode lnbMode = m_TuningData.GetLNBPowerMode(pTuningParam->IniSpaceID);
 			switch (lnbMode) {
 			case enumLNBPowerMode::eLNBPowerModeForceOff:
-				pol = Polarisation::BDA_POLARISATION_NOT_DEFINED;
+				pol = Polarisation::BDA_POLARISATION_NOT_SET;
 				break;
 			case enumLNBPowerMode::eLNBPowerModeForce13V:
 				if (pol >= Polarisation::BDA_POLARISATION_CIRCULAR_L) {
