@@ -597,7 +597,7 @@ const HRESULT CDDSpecials::SetLNBPower(bool bActive)
 
 const HRESULT CDDSpecials::ReadIniFile(const WCHAR *szIniFilePath)
 {
-	static const std::map<const std::wstring, const int, std::less<>> mapSignalStandard = {
+	const std::map<const std::wstring, const int, std::less<>> mapSignalStandard = {
 		{ L"",        DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_UNDEFINED },
 		{ L"DVB-T",   DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_DVBT },
 		{ L"DVB-T2",  DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_DVBT2 },
@@ -614,7 +614,7 @@ const HRESULT CDDSpecials::ReadIniFile(const WCHAR *szIniFilePath)
 		{ L"J.83B",   DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_J83B },
 	};
 
-	static const std::map<const std::wstring, const int, std::less<>> mapGetSignalStrengthFunction = {
+	const std::map<const std::wstring, const int, std::less<>> mapGetSignalStrengthFunction = {
 		{ L"",        -1 },
 		{ L"SIGNALSTRENGTH", KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_STRENGTH },
 		{ L"SIGNALQUALITY",  KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_QUALITY },
@@ -627,7 +627,7 @@ const HRESULT CDDSpecials::ReadIniFile(const WCHAR *szIniFilePath)
 		{ L"SYMBOLRATE",     KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_SYMBOLRATE },
 	};
 
-	static const std::map<const std::wstring, const int, std::less<>> mapLNBPowerMode = {
+	const std::map<const std::wstring, const int, std::less<>> mapLNBPowerMode = {
 		{ L"OFF",  enumLNBPowerMode::eLNBPowerModeForceOff },
 		{ L"13V",  enumLNBPowerMode::eLNBPowerModeForce13V },
 		{ L"18V",  enumLNBPowerMode::eLNBPowerModeForce18V },
