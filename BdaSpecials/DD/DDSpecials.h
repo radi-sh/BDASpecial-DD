@@ -259,7 +259,7 @@ enum KSPROPERTY_DD_BDA_UNKNOWN_A {						// MinProperty=24
 	KSPROPERTYSET_DD_BDA_UNKNOWN_A502_10 = 10,			// get/set		MinData=4
 };
 
-class CDDSpecials : public IBdaSpecials2b3
+class CDDSpecials : public IBdaSpecials2b4
 {
 public:
 	CDDSpecials(HMODULE hMySelf, CComPtr<IBaseFilter> pTunerDevice);
