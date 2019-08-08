@@ -342,31 +342,6 @@ const HRESULT CDDSpecials::InitializeHook(void)
 	return S_OK;
 }
 
-const HRESULT CDDSpecials::Set22KHz(bool bActive)
-{
-	return E_NOINTERFACE;
-}
-
-const HRESULT CDDSpecials::Set22KHz(long nTone)
-{
-	return E_NOINTERFACE;
-}
-
-const HRESULT CDDSpecials::FinalizeHook(void)
-{
-	return S_OK;
-}
-
-const HRESULT CDDSpecials::GetSignalState(int *pnStrength, int *pnQuality, int *pnLock)
-{
-	return E_NOINTERFACE;
-}
-
-const HRESULT CDDSpecials::LockChannel(BYTE bySatellite, BOOL bHorizontal, unsigned long ulFrequency, BOOL bDvbS2)
-{
-	return E_NOINTERFACE;
-}
-
 const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParam)
 {
 	if (m_pTunerDevice == NULL) {
@@ -590,11 +565,6 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParam)
 	return success ? S_OK : E_FAIL;
 }
 
-const HRESULT CDDSpecials::SetLNBPower(bool bActive)
-{
-	return E_NOINTERFACE;
-}
-
 const HRESULT CDDSpecials::ReadIniFile(const WCHAR *szIniFilePath)
 {
 	const std::map<const std::wstring, const int, std::less<>> mapSignalStandard = {
@@ -666,19 +636,6 @@ const HRESULT CDDSpecials::ReadIniFile(const WCHAR *szIniFilePath)
 	return S_OK;
 }
 
-const HRESULT CDDSpecials::IsDecodingNeeded(BOOL *pbAns)
-{
-	if (pbAns)
-		*pbAns = FALSE;
-
-	return S_OK;
-}
-
-const HRESULT CDDSpecials::Decode(BYTE *pBuf, DWORD dwSize)
-{
-	return E_NOINTERFACE;
-}
-
 const HRESULT CDDSpecials::GetSignalStrength(float *fVal)
 {
 	if (m_nGetSignalStrengthFunction == -1) {
@@ -735,21 +692,6 @@ const HRESULT CDDSpecials::GetSignalStrength(float *fVal)
 		break;
 	}
 
-	return S_OK;
-}
-
-const HRESULT CDDSpecials::PreLockChannel(TuningParam *pTuningParam)
-{
-	return S_OK;
-}
-
-const HRESULT CDDSpecials::PreTuneRequest(const TuningParam *pTuningParam, ITuneRequest *pITuneRequest)
-{
-	return S_OK;
-}
-
-const HRESULT CDDSpecials::PostTuneRequest(const TuningParam * pTuningParam)
-{
 	return S_OK;
 }
 

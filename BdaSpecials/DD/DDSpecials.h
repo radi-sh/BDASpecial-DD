@@ -259,29 +259,17 @@ enum KSPROPERTY_DD_BDA_UNKNOWN_A {						// MinProperty=24
 	KSPROPERTYSET_DD_BDA_UNKNOWN_A502_10 = 10,			// get/set		MinData=4
 };
 
-class CDDSpecials : public IBdaSpecials2b4
+class CDDSpecials : public IBdaSpecials2b5
 {
 public:
 	CDDSpecials(HMODULE hMySelf, CComPtr<IBaseFilter> pTunerDevice);
 	virtual ~CDDSpecials(void);
 
 	const HRESULT InitializeHook(void);
-	const HRESULT Set22KHz(bool bActive);
-	const HRESULT FinalizeHook(void);
 
-	const HRESULT GetSignalState(int *pnStrength, int *pnQuality, int *pnLock);
-	const HRESULT LockChannel(BYTE bySatellite, BOOL bHorizontal, unsigned long ulFrequency, BOOL bDvbS2);
-	const HRESULT SetLNBPower(bool bActive);
-
-	const HRESULT Set22KHz(long nTone);
 	const HRESULT LockChannel(const TuningParam *pTuningParam);
 	const HRESULT ReadIniFile(const WCHAR *szIniFilePath);
-	const HRESULT IsDecodingNeeded(BOOL *pbAns);
-	const HRESULT Decode(BYTE *pBuf, DWORD dwSize);
 	const HRESULT GetSignalStrength(float *fVal);
-	const HRESULT PreLockChannel(TuningParam *pTuningParam);
-	const HRESULT PreTuneRequest(const TuningParam *pTuningParam, ITuneRequest *pITuneRequest);
-	const HRESULT PostTuneRequest(const TuningParam *pTuningParam);
 	const HRESULT PostLockChannel(const TuningParam *pTuningParam);
 
 	virtual void Release(void);
