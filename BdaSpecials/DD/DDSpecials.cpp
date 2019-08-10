@@ -17,7 +17,7 @@
 
 FILE *g_fpLog = NULL;
 
-HMODULE hMySelf;
+HMODULE CDDSpecials::m_hMySelf = NULL;
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
 {
@@ -27,7 +27,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 		::_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
 		// モジュールハンドル保存
-		hMySelf = hModule;
+		CDDSpecials::m_hMySelf = hModule;
 		break;
 
 	case DLL_PROCESS_DETACH:
@@ -40,7 +40,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 
 __declspec(dllexport) IBdaSpecials * CreateBdaSpecials(CComPtr<IBaseFilter> pTunerDevice)
 {
-	return new CDDSpecials(hMySelf, pTunerDevice);
+	return new CDDSpecials(pTunerDevice);
 }
 
 __declspec(dllexport) HRESULT CheckAndInitTuner(IBaseFilter *pTunerDevice, const WCHAR *szDisplayName, const WCHAR *szFriendlyName, const WCHAR *szIniFilePath)
@@ -50,15 +50,14 @@ __declspec(dllexport) HRESULT CheckAndInitTuner(IBaseFilter *pTunerDevice, const
 	// DebugLogを記録するかどうか
 	if (IniFileAccess.ReadKeyB(L"DD", L"DebugLog", FALSE)) {
 		// DebugLogのファイル名取得
-		SetDebugLog(common::GetModuleName(hMySelf) + L"log");
+		SetDebugLog(common::GetModuleName(CDDSpecials::m_hMySelf) + L"log");
 	}
 
 	return S_OK;
 }
 
-CDDSpecials::CDDSpecials(HMODULE hMySelf, CComPtr<IBaseFilter> pTunerDevice)
-	: m_hMySelf(hMySelf),
-	  m_pTunerDevice(pTunerDevice)
+CDDSpecials::CDDSpecials(CComPtr<IBaseFilter> pTunerDevice)
+	: m_pTunerDevice(pTunerDevice)
 {
 	::InitializeCriticalSection(&m_CriticalSection);
 
@@ -67,8 +66,6 @@ CDDSpecials::CDDSpecials(HMODULE hMySelf, CComPtr<IBaseFilter> pTunerDevice)
 
 CDDSpecials::~CDDSpecials()
 {
-	m_hMySelf = NULL;
-
 	::DeleteCriticalSection(&m_CriticalSection);
 
 	return;

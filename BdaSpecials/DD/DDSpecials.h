@@ -262,7 +262,7 @@ enum KSPROPERTY_DD_BDA_UNKNOWN_A {						// MinProperty=24
 class CDDSpecials : public IBdaSpecials2b5
 {
 public:
-	CDDSpecials(HMODULE hMySelf, CComPtr<IBaseFilter> pTunerDevice);
+	CDDSpecials(CComPtr<IBaseFilter> pTunerDevice);
 	virtual ~CDDSpecials(void);
 
 	const HRESULT InitializeHook(void);
@@ -273,6 +273,8 @@ public:
 	const HRESULT PostLockChannel(const TuningParam *pTuningParam);
 
 	virtual void Release(void);
+
+	static HMODULE m_hMySelf;
 
 private:
 	static constexpr ULONG NODE_ID_DD_BDA_DIGITAL_DEMODULATOR = 1;
@@ -359,7 +361,6 @@ private:
 		};
 	};
 
-	HMODULE m_hMySelf;
 	CComPtr<IKsControl> m_pControlTunerFilter;							// Tuner ‚Ì IKsControl
 	CComPtr<IKsControl> m_pControlTunerInputPin;						// Input Pin ‚Ì IKsControl
 	CComPtr<IKsControl> m_pControlTunerOutputPin;						// Output Pin ‚Ì IKsControl
