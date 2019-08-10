@@ -19,7 +19,7 @@ FILE *g_fpLog = NULL;
 
 HMODULE CDDSpecials::m_hMySelf = NULL;
 
-BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved)
+BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID /*lpReserved*/)
 {
 	switch (ul_reason_for_call) {
 	case DLL_PROCESS_ATTACH:
@@ -38,12 +38,12 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 	return TRUE;
 }
 
-__declspec(dllexport) IBdaSpecials * CreateBdaSpecials(CComPtr<IBaseFilter> pTunerDevice)
+__declspec(dllexport) IBdaSpecials* CreateBdaSpecials(CComPtr<IBaseFilter> pTunerDevice)
 {
 	return new CDDSpecials(pTunerDevice);
 }
 
-__declspec(dllexport) HRESULT CheckAndInitTuner(IBaseFilter *pTunerDevice, const WCHAR *szDisplayName, const WCHAR *szFriendlyName, const WCHAR *szIniFilePath)
+__declspec(dllexport) HRESULT CheckAndInitTuner(IBaseFilter* /*pTunerDevice*/, const WCHAR* /*szDisplayName*/, const WCHAR* /*szFriendlyName*/, const WCHAR* szIniFilePath)
 {
 	CIniFileAccess IniFileAccess(szIniFilePath);
 
@@ -339,7 +339,7 @@ const HRESULT CDDSpecials::InitializeHook(void)
 	return S_OK;
 }
 
-const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParam)
+const HRESULT CDDSpecials::LockChannel(const TuningParam* pTuningParam)
 {
 	if (m_pTunerDevice == NULL) {
 		return E_POINTER;
@@ -562,7 +562,7 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam *pTuningParam)
 	return success ? S_OK : E_FAIL;
 }
 
-const HRESULT CDDSpecials::ReadIniFile(const WCHAR *szIniFilePath)
+const HRESULT CDDSpecials::ReadIniFile(const WCHAR* szIniFilePath)
 {
 	const std::map<const std::wstring, const int, std::less<>> mapSignalStandard = {
 		{ L"",        DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_UNDEFINED },
@@ -633,7 +633,7 @@ const HRESULT CDDSpecials::ReadIniFile(const WCHAR *szIniFilePath)
 	return S_OK;
 }
 
-const HRESULT CDDSpecials::GetSignalStrength(float *fVal)
+const HRESULT CDDSpecials::GetSignalStrength(float* fVal)
 {
 	if (m_nGetSignalStrengthFunction == -1) {
 		return E_NOINTERFACE;
@@ -692,7 +692,7 @@ const HRESULT CDDSpecials::GetSignalStrength(float *fVal)
 	return S_OK;
 }
 
-const HRESULT CDDSpecials::PostLockChannel(const TuningParam *pTuningParam)
+const HRESULT CDDSpecials::PostLockChannel(const TuningParam* /*pTuningParam*/)
 {
 	if (m_pTunerDevice == NULL) {
 		return E_POINTER;
