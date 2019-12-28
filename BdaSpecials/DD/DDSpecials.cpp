@@ -562,7 +562,7 @@ const HRESULT CDDSpecials::LockChannel(const TuningParam* pTuningParam)
 
 const HRESULT CDDSpecials::ReadIniFile(const WCHAR* szIniFilePath)
 {
-	const std::map<const std::wstring, const int, std::less<>> mapSignalStandard = {
+	const CIniFileAccess::Map mapSignalStandard = {
 		{ L"",        DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_UNDEFINED },
 		{ L"DVB-T",   DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_DVBT },
 		{ L"DVB-T2",  DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_DVBT2 },
@@ -579,7 +579,7 @@ const HRESULT CDDSpecials::ReadIniFile(const WCHAR* szIniFilePath)
 		{ L"J.83B",   DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_J83B },
 	};
 
-	const std::map<const std::wstring, const int, std::less<>> mapGetSignalStrengthFunction = {
+	const CIniFileAccess::Map mapGetSignalStrengthFunction = {
 		{ L"",        -1 },
 		{ L"SIGNALSTRENGTH", KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_STRENGTH },
 		{ L"SIGNALQUALITY",  KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_QUALITY },
@@ -592,7 +592,7 @@ const HRESULT CDDSpecials::ReadIniFile(const WCHAR* szIniFilePath)
 		{ L"SYMBOLRATE",     KSPROPERTY_DD_BDA_SIGNAL_INFO::KSPROPERTY_DD_BDA_SIGNAL_SYMBOLRATE },
 	};
 
-	const std::map<const std::wstring, const int, std::less<>> mapLNBPowerMode = {
+	const CIniFileAccess::Map mapLNBPowerMode = {
 		{ L"OFF",  enumLNBPowerMode::eLNBPowerModeForceOff },
 		{ L"13V",  enumLNBPowerMode::eLNBPowerModeForce13V },
 		{ L"18V",  enumLNBPowerMode::eLNBPowerModeForce18V },
@@ -612,19 +612,19 @@ const HRESULT CDDSpecials::ReadIniFile(const WCHAR* szIniFilePath)
 	BOOL bLNBPowerOff = IniFileAccess.ReadKeyB(L"LNBPowerOff", FALSE);
 
 	// GetSignalStrength 関数で返す値
-	m_nGetSignalStrengthFunction = (KSPROPERTY_DD_BDA_SIGNAL_INFO)IniFileAccess.ReadKeyIValueMap(L"GetSignalStrengthFunction", -1, mapGetSignalStrengthFunction);
+	m_nGetSignalStrengthFunction = (KSPROPERTY_DD_BDA_SIGNAL_INFO)IniFileAccess.ReadKeyIValueMap(L"GetSignalStrengthFunction", -1, &mapGetSignalStrengthFunction);
 
 	// チューニング空間00～99の設定を読込
 	for (DWORD space = 0; space < 100; space++) {
 		std::wstring section = common::WStringPrintf(L"TUNINGSPACE%02d", space);
-		if (IniFileAccess.ReadSection(section) <= 0) {
+		if (IniFileAccess.ReadSection(section.c_str()) <= 0) {
 			continue;
 		}
 		IniFileAccess.CreateSectionData();
 		// 信号規格
-		DD_SIGNAL_STANDARD nSelectStandard = (DD_SIGNAL_STANDARD)IniFileAccess.ReadKeyIValueMapSectionData(L"DD_SelectStandard", DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_UNDEFINED, mapSignalStandard);
+		DD_SIGNAL_STANDARD nSelectStandard = (DD_SIGNAL_STANDARD)IniFileAccess.ReadKeyIValueMapSectionData(L"DD_SelectStandard", DD_SIGNAL_STANDARD::DD_SIGNAL_STANDARD_UNDEFINED, &mapSignalStandard);
 		// LNB Power Mode
-		enumLNBPowerMode LNBPowerMode = (enumLNBPowerMode)IniFileAccess.ReadKeyIValueMapSectionData(L"DD_LNBPowerMode", bLNBPowerOff ? enumLNBPowerMode::eLNBPowerModeForceOff : enumLNBPowerMode::eLNBPowerModeAuto, mapLNBPowerMode);
+		enumLNBPowerMode LNBPowerMode = (enumLNBPowerMode)IniFileAccess.ReadKeyIValueMapSectionData(L"DD_LNBPowerMode", bLNBPowerOff ? enumLNBPowerMode::eLNBPowerModeForceOff : enumLNBPowerMode::eLNBPowerModeAuto, &mapLNBPowerMode);
 		m_TuningData.Regist(space, nSelectStandard, LNBPowerMode);
 	}
 
