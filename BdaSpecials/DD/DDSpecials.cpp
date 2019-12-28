@@ -15,8 +15,6 @@
 #include "CIniFileAccess.h"
 #include "DSFilterEnum.h"
 
-FILE *g_fpLog = NULL;
-
 HMODULE CDDSpecials::m_hMySelf = NULL;
 
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID /*lpReserved*/)
