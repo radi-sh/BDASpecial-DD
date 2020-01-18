@@ -90,9 +90,9 @@ const HRESULT CDDSpecials::InitializeHook(void)
 	// チューナーデバイス input pin の IKsControl / output pin の IKsControl
 	{
 		CDSEnumPins DSEnumPins(m_pTunerDevice);
-		CComPtr<IPin> pPin;
-		PIN_DIRECTION dir;
 		do {
+			CComPtr<IPin> pPin;
+			PIN_DIRECTION dir;
 			if (FAILED(hr = DSEnumPins.getNextPin(&pPin, &dir))) {
 				break;
 			}
